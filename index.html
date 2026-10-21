@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Galley</title>
-<meta name="description" content="A fast LaTeX editor and compiler for phone, tablet and desktop. No account. Every compile is kept in History on your device.">
+<meta name="description" content="A fast LaTeX editor and compiler for phone, tablet and desktop. No account. Projects and every compile are kept on your device.">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14171d" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,7 +21,7 @@
 try{var s=JSON.parse(localStorage.getItem('galley.settings')||'{}');if(s.theme==='dark'||s.theme==='light')document.documentElement.setAttribute('data-theme',s.theme)}catch(e){}
 </script>
 <style>
-/* Layout: app shell. Header, then source | PDF side by side; one pane with Source/PDF tabs under 860px. */
+/* Layout: two screens. Projects home (grid of document cards on a desk), and the editor (source | PDF, one pane with tabs under 860px). */
 :root{
   --bg:#eceef2; --surface:#ffffff; --surface-2:#f4f5f8; --line:#dadee5; --line-2:#c4cad4;
   --fg:#141820; --muted:#596173; --faint:#8b93a3;
@@ -65,18 +65,81 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .i.fill{fill:currentColor;stroke:none}
+.i.sm{width:16px;height:16px}
 
+body[data-screen="home"] .app,body[data-screen="editor"] .home,body:not([data-screen]) .app{display:none}
+
+/* Shared controls */
+.brand{display:flex;align-items:center;gap:8px;flex:none;user-select:none}
+.mark{width:24px;height:24px}
+.mark .pg-r{fill:var(--accent)}
+.mark .pg-l{stroke:var(--accent-fg);stroke-width:1.7;stroke-linecap:round;fill:none}
+.word{font:600 20px/1 var(--serif);letter-spacing:.01em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--tap);padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);font-weight:500;white-space:nowrap;position:relative;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--surface-2);border-color:var(--line-2)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.icon{width:var(--tap);padding:0}
+.btn.sm{height:30px;padding:0 10px;font-size:13px}
+.btn.icon.sm{width:30px;padding:0}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.btn.danger{color:var(--bad)}
+.badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--fg);color:var(--surface);font-size:10.5px;font-weight:700;line-height:17px;text-align:center;font-variant-numeric:tabular-nums}
+.badge:empty{display:none}
+.lbl-w{display:none}
+@media (min-width:1180px){.lbl-w{display:inline}.bar-actions .btn.icon.has-lbl{width:auto;padding:0 12px}}
+.input{height:var(--tap);border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);padding:0 10px;min-width:0;flex:1 1 auto;font-size:15px}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.note{margin:0;color:var(--muted);font-size:13px;text-wrap:pretty}
+.sec{margin:10px 0 0;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px;flex:none}
+.seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 14px;font-weight:550;color:var(--muted)}
+.seg button[aria-selected="true"],.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none;display:inline-block}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.edit{background:var(--warn)}
+
+/* ---------- Projects home ---------- */
+.home{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.hbar{display:flex;align-items:center;gap:10px;background:var(--surface);border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.hbar .grow{flex:1}
+.home-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;min-height:0}
+.home-inner{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:18px;
+  padding:28px max(16px,env(safe-area-inset-right,0px)) calc(48px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.home-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.home-head h1{margin:0;font:600 34px/1.1 var(--serif);letter-spacing:-.01em;text-wrap:balance}
+.home-sub{margin:2px 0 0;color:var(--muted)}
+.home-head .titles{margin-right:auto;min-width:0}
+.home-tools{display:flex;gap:8px;flex-wrap:wrap}
+.home-tools .input{flex:1 1 240px;max-width:420px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+@media (max-width:520px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.home-head h1{font-size:28px}}
+.pcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:border-color .12s,box-shadow .12s;min-width:0}
+.pcard:hover{border-color:var(--line-2);box-shadow:0 6px 20px rgb(16 22 34 / .08)}
+.pc-main{display:flex;flex-direction:column;width:100%;border:0;background:transparent;padding:0;text-align:left}
+.pc-thumb{position:relative;aspect-ratio:4/3;max-width:100%;background:var(--desk);overflow:hidden}
+.pc-paper{position:absolute;left:15%;right:15%;top:14px;bottom:-16px;background:#fff;box-shadow:var(--page-sh);border-radius:2px;overflow:hidden}
+.pc-paper img{display:block;width:100%}
+.pc-ghost{display:flex;flex-direction:column;gap:7px;padding:18% 14% 0}
+.pc-ghost i{display:block;height:5px;border-radius:3px;background:#dde1e8}
+.pc-ghost i:first-child{width:58%;height:8px;margin:0 auto 6px;background:#c7ccd6}
+.pc-ghost i:nth-child(4){width:72%}
+.pc-body{display:flex;flex-direction:column;gap:3px;padding:10px 12px 12px;min-width:0}
+.pc-title{font-weight:650;font-size:15px;line-height:1.3;overflow-wrap:anywhere;padding-right:4px}
+.pc-meta{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px;min-width:0}
+.pc-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pc-more{position:absolute;top:8px;right:8px;background:var(--surface);border-color:var(--line)}
+.home-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:48px 16px;color:var(--muted)}
+.home-empty h2{margin:0;font:500 24px var(--serif);color:var(--fg)}
+
+/* ---------- Editor ---------- */
 .app{position:fixed;top:0;left:0;right:0;height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;
   padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body.kb .app{padding-bottom:0}
-
-/* Header */
 .bar{grid-row:1;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:var(--surface);border-bottom:1px solid var(--line);min-width:0}
-.brand{display:flex;align-items:center;gap:7px;flex:none;user-select:none}
-.mark{width:22px;height:22px}
-.mark .pg-r{fill:var(--accent)}
-.mark .pg-l{stroke:var(--accent-fg);stroke-width:1.7;stroke-linecap:round;fill:none}
-.word{font:600 19px/1 var(--serif);letter-spacing:.01em}
+.back{padding:0 10px 0 6px;flex:none}
 .doc-title{flex:1 1 auto;min-width:0;max-width:420px;border:1px solid transparent;background:transparent;border-radius:var(--r-sm);padding:6px 8px;font-weight:600;font-size:15px;text-overflow:ellipsis}
 .doc-title:hover{background:var(--surface-2)}
 .doc-title:focus{outline:none;border-color:var(--accent);background:var(--surface)}
@@ -91,20 +154,6 @@ body.kb .app{padding-bottom:0}
 .bar .status{margin-left:auto}
 .bar-actions{display:flex;align-items:center;gap:6px;flex:none;margin-left:auto}
 .bar .status:not(:empty) + .bar-actions{margin-left:8px}
-
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--tap);padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);font-weight:500;white-space:nowrap;position:relative;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--surface-2);border-color:var(--line-2)}
-.btn:disabled{opacity:.45;cursor:default}
-.btn.icon{width:var(--tap);padding:0}
-.btn.sm{height:30px;padding:0 10px;font-size:13px}
-.btn.icon.sm{width:30px;padding:0}
-.btn.ghost{border-color:transparent;background:transparent}
-.btn.ghost:hover{background:var(--surface-2)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
-.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
-.btn.danger{color:var(--bad)}
-.badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--fg);color:var(--surface);font-size:10.5px;font-weight:700;line-height:17px;text-align:center;font-variant-numeric:tabular-nums}
-.badge:empty{display:none}
 .compile{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:650;padding:0 14px 0 12px;min-width:112px}
 .compile:hover{background:var(--accent-2);border-color:var(--accent-2)}
 .compile .cl{font-variant-numeric:tabular-nums}
@@ -117,11 +166,6 @@ body.kb .app{padding-bottom:0}
 @keyframes pulse{50%{opacity:.3}}
 
 .subbar{grid-row:2;display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
-.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px;flex:none}
-.seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 14px;font-weight:550;color:var(--muted)}
-.seg button[aria-selected="true"],.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
-
-/* Panes */
 .panes{grid-row:3;display:grid;grid-template-columns:minmax(0,var(--split,50%)) 7px minmax(0,1fr);min-height:0}
 .pane{display:grid;min-height:0;min-width:0}
 .src-pane{grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface)}
@@ -132,18 +176,20 @@ body.kb .app{padding-bottom:0}
 body.dragging,body.dragging *{cursor:col-resize!important;user-select:none!important}
 
 .strip{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line);min-width:0}
-.ftabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
+.ftabs{display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
 .ftabs::-webkit-scrollbar{display:none}
 .ftab{flex:none;border:0;background:transparent;border-radius:6px;height:30px;padding:0 10px;color:var(--muted);font-weight:500;display:inline-flex;align-items:center;gap:6px;font-size:13px}
 .ftab:hover{background:var(--surface-2)}
 .ftab[aria-selected="true"]{color:var(--fg);background:var(--surface-2);box-shadow:inset 0 -2px 0 var(--accent)}
 .ftab .main{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.ftab-menu{flex:none;width:24px;height:30px;border:0;background:transparent;border-radius:6px;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;margin-left:-4px}
+.ftab-menu:hover{background:var(--surface-2);color:var(--fg)}
 .compiler{flex:none;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:0 6px;font-size:13px;font-weight:550}
 
 .ed{position:relative;min-height:0;min-width:0}
 .ed textarea{position:absolute;inset:0;width:100%;height:100%;border:0;resize:none;padding:12px 14px;background:var(--surface);color:var(--fg);font:14px/1.6 var(--mono);outline:none;tab-size:2}
 .ed .CodeMirror{position:absolute;inset:0;height:auto;font:14px/1.6 var(--mono);background:var(--surface);color:var(--fg)}
-@media (pointer:coarse){.ed textarea,.ed .CodeMirror{font-size:16px}.doc-title,.input,.compiler{font-size:16px}}
+@media (pointer:coarse){.ed textarea,.ed .CodeMirror{font-size:16px}.doc-title,.input,.compiler,.fsort{font-size:16px}}
 .CodeMirror-gutters{background:var(--c-gutter);border-right:1px solid var(--line)}
 .CodeMirror-linenumber{color:var(--faint);font-size:12px;padding:0 8px 0 4px;font-variant-numeric:tabular-nums}
 .CodeMirror-cursor{border-left:2px solid var(--fg)}
@@ -155,8 +201,7 @@ body.dragging,body.dragging *{cursor:col-resize!important;user-select:none!impor
 .cm-s-default .cm-comment{color:var(--c-comment);font-style:italic}
 .cm-s-default .cm-bracket{color:var(--c-brk)}
 .cm-s-default .cm-number{color:var(--c-num)}
-.cm-s-default .cm-atom,.cm-s-default .cm-builtin{color:var(--c-env)}
-.cm-s-default .cm-variable-2{color:var(--c-env)}
+.cm-s-default .cm-atom,.cm-s-default .cm-builtin,.cm-s-default .cm-variable-2{color:var(--c-env)}
 .cm-s-default .cm-string{color:var(--c-num)}
 .cm-s-default .cm-error{color:var(--bad)}
 .CodeMirror-matchingbracket{color:var(--fg)!important;background:var(--accent-soft);outline:1px solid var(--accent)}
@@ -181,12 +226,23 @@ body:not(.cm-ready) .key.touch{display:none}
 .banner .b-text{flex:1 1 200px;min-width:0;display:flex;flex-direction:column}
 .banner strong{font-weight:650}
 .banner span{color:var(--muted)}
-.banner .b-acts{display:flex;gap:6px}
+.banner .b-acts{display:flex;gap:6px;flex-wrap:wrap}
 .pdf-scroll{position:relative;overflow:auto;min-height:0;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .pages{width:max-content;min-width:100%;padding:16px 16px 40px}
-.pg{margin:0 auto 14px;background:#fff;box-shadow:var(--page-sh);position:relative;transform-origin:0 0}
+.pg{margin:0 auto 14px;background:#fff;box-shadow:var(--page-sh);position:relative}
 .pg canvas{display:block;width:100%;height:100%}
 .pages iframe{display:block;width:100%;height:calc(100vh - 140px);border:0;background:#fff}
+/* selectable text (PDF.js text layer) */
+.textLayer{position:absolute;text-align:initial;inset:0;overflow:hidden;opacity:.28;line-height:1;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:2}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%}
+.textLayer span.markedContent{top:0;height:0}
+.textLayer ::selection{background:#0057ff}
+.textLayer br::selection{background:transparent}
+.textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:-1;cursor:default;user-select:none;-webkit-user-select:none}
+.textLayer .endOfContent.active{top:0}
+.linkLayer{position:absolute;inset:0;z-index:3;pointer-events:none}
+.linkLayer a{position:absolute;pointer-events:auto;border-radius:2px}
+.linkLayer a:hover{background:rgb(42 68 212 / .14);outline:1px solid rgb(42 68 212 / .35)}
 .pdf-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--muted);gap:8px}
 .pdf-empty h2{font:500 26px/1.2 var(--serif);color:var(--fg);margin:0;text-wrap:balance}
 .pdf-empty p{margin:0;max-width:34ch;text-wrap:pretty}
@@ -194,14 +250,14 @@ body:not(.cm-ready) .key.touch{display:none}
 .sheet-ghost i{display:block;height:6px;border-radius:3px;background:var(--line)}
 .sheet-ghost i:first-child{width:60%;height:9px;margin:0 auto 6px;background:var(--line-2)}
 .sheet-ghost i:nth-child(4){width:70%}
-.busy{position:absolute;left:0;right:0;top:0;height:3px;overflow:hidden;z-index:3}
+.busy{position:absolute;left:0;right:0;top:0;height:3px;overflow:hidden;z-index:4}
 .busy::after{content:"";position:absolute;top:0;bottom:0;width:35%;background:var(--accent);animation:slide 1.1s ease-in-out infinite}
 @keyframes slide{from{left:-35%}to{left:100%}}
 .pdf-pane.loading .pages{opacity:.55;transition:opacity .2s}
 
 /* Problems */
-body.kb .issues{max-height:28vh}
 .issues{grid-row:4;max-height:42vh;display:flex;flex-direction:column;background:var(--surface);border-top:2px solid var(--bad);min-height:0}
+body.kb .issues{max-height:28vh}
 .issues-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
 .issues-head h2{margin:0;font-size:14px;font-weight:650;color:var(--bad);display:flex;align-items:center;gap:6px;margin-right:auto}
 .issues-body{overflow:auto;min-height:0;padding:6px}
@@ -218,42 +274,61 @@ body.kb .issues{max-height:28vh}
 /* Sheets */
 .scrim{position:fixed;inset:0;background:var(--scrim);z-index:40}
 .sheet{position:fixed;z-index:41;background:var(--surface);display:flex;flex-direction:column;box-shadow:var(--shadow);
-  top:0;right:0;bottom:0;width:min(420px,100%);border-left:1px solid var(--line);padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  top:0;right:0;bottom:0;width:min(440px,100%);border-left:1px solid var(--line);padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateX(16px);opacity:0;transition:transform .18s ease,opacity .18s ease}
 .sheet.open{transform:none;opacity:1}
 .sh-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px 18px;border-bottom:1px solid var(--line)}
 .sh-head h2{margin:0;font:600 21px/1.2 var(--serif);margin-right:auto}
-.sh-body{overflow:auto;padding:14px 18px 24px;min-height:0;display:flex;flex-direction:column;gap:12px}
-.sec{margin:10px 0 0;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.note{margin:0;color:var(--muted);font-size:13px;text-wrap:pretty}
+.sh-body{overflow:auto;padding:14px 18px 24px;min-height:0;display:flex;flex-direction:column;gap:12px;position:relative}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .newfile{display:flex;gap:6px}
-.input{height:var(--tap);border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);padding:0 10px;min-width:0;flex:1 1 auto;font-size:15px}
-.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.flist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
-.frow{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 12px;padding:8px;border-radius:9px;align-items:center}
-.frow:hover{background:var(--surface-2)}
-.fthumb{width:44px;height:44px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;grid-row:span 2}
-.fthumb img{width:100%;height:100%;object-fit:cover}
-.fext{font:700 10px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
-.finfo{min-width:0;display:flex;flex-direction:column}
-.fname{font-weight:600;overflow-wrap:anywhere}
-.fmeta{color:var(--muted);font-size:12.5px}
-.fmeta b{color:var(--accent);font-weight:650}
-.facts{display:flex;gap:4px;flex-wrap:wrap}
 .tpls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tpl{text-align:left;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .tpl:hover{border-color:var(--accent);background:var(--accent-soft)}
 .tpl b{font-weight:650}
 .tpl span{color:var(--muted);font-size:12.5px;line-height:1.35}
 .field{display:flex;flex-direction:column;gap:6px}
-.field>span{font-weight:600}
+.field>span:first-child{font-weight:600}
 .field small{color:var(--muted);font-size:12.5px}
 .sw{display:flex;align-items:flex-start;gap:10px;padding:4px 0;cursor:pointer}
 .sw input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);flex:none}
-.hist-tools{display:flex;gap:6px}
+
+/* Files panel */
+.ftools{display:flex;gap:6px;flex-wrap:wrap}
+.ftools .btn.primary{flex:1 1 auto}
+.fsub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.fsub .grow{margin-right:auto;font-variant-numeric:tabular-nums}
+.fsort{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:0 6px;font-size:13px}
+.ftree{display:flex;flex-direction:column;gap:6px}
+.fgroup{display:flex;flex-direction:column;border-radius:10px}
+.fhead{display:flex;align-items:center;gap:4px;min-height:36px;border-radius:8px;padding-right:2px}
+.fhead .tog{flex:1;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:transparent;padding:6px 4px;text-align:left;font-weight:650;border-radius:7px}
+.fhead .tog:hover{background:var(--surface-2)}
+.fhead .tog .cnt{color:var(--muted);font-weight:500;font-size:12.5px}
+.fhead .tog .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fhead .chev{transition:transform .15s;color:var(--muted)}
+.fgroup.closed .chev{transform:rotate(-90deg)}
+.fgroup.closed .frows{display:none}
+.fgroup.drop-ok{background:var(--accent-soft);outline:2px dashed var(--accent);outline-offset:-2px}
+.frows{display:flex;flex-direction:column;gap:1px}
+.fgroup.in .frows{padding-left:18px}
+.frow{display:flex;align-items:center;gap:10px;padding:5px 4px 5px 6px;border-radius:8px;min-width:0;cursor:pointer}
+.frow:hover{background:var(--surface-2)}
+.frow.sel{background:var(--accent-soft)}
+.frow.dragging{opacity:.45}
+.frow .ck{width:18px;height:18px;margin:0;accent-color:var(--accent);flex:none}
+.fthumb{width:36px;height:36px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
+.fthumb img{width:100%;height:100%;object-fit:cover}
+.fext{font:700 9.5px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+.finfo{flex:1;min-width:0;display:flex;flex-direction:column}
+.fname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmeta{color:var(--muted);font-size:12px;display:flex;gap:6px;flex-wrap:wrap}
+.fmeta b{color:var(--accent);font-weight:650}
+.fmeta .unused{color:var(--warn)}
+.selbar{position:sticky;bottom:-24px;margin:4px -18px -24px;padding:10px 18px calc(12px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.selbar .grow{margin-right:auto;font-weight:600}
 .day{margin:8px 0 2px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hist-tools{display:flex;gap:6px}
 .hrow{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:9px 8px}
 .hrow:hover{background:var(--surface-2)}
 .hrow[aria-current="true"]{background:var(--accent-soft)}
@@ -265,21 +340,35 @@ body.kb .issues{max-height:28vh}
 .hm{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 .empty-note{color:var(--muted);margin:8px 0}
 
+/* Menus, dialogs, toast */
+.menu{position:fixed;z-index:55;min-width:200px;max-width:calc(100vw - 16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:4px;display:flex;flex-direction:column}
+.menu-item{border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:7px;font-weight:500;display:flex;gap:10px;align-items:center;white-space:nowrap}
+.menu-item:hover,.menu-item:focus-visible{background:var(--surface-2);outline:none}
+.menu-item.danger{color:var(--bad)}
+.menu-item .i{color:var(--muted)}
+.menu-item.danger .i{color:var(--bad)}
+.menu-sep{height:1px;background:var(--line);margin:4px 2px}
 .ask{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim)}
-.ask-card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:20px;width:min(380px,100%);display:flex;flex-direction:column;gap:8px;border:1px solid var(--line)}
+.ask-card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:20px;width:min(400px,100%);display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);max-height:calc(100% - 20px);overflow:auto;margin:0}
 .ask-card h3{margin:0;font-size:17px;text-wrap:balance}
 .ask-card p{margin:0;color:var(--muted)}
-.ask-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.ask-card p:empty{display:none}
+.ask-list{display:flex;flex-direction:column;gap:4px}
+.ask-list button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;font-weight:550;display:flex;align-items:center;gap:8px}
+.ask-list button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.ask-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);font-weight:500;max-width:calc(100% - 32px);text-align:center}
 .drop{position:fixed;inset:10px;z-index:80;border:3px dashed var(--accent);border-radius:16px;background:color-mix(in srgb,var(--accent-soft) 85%,transparent);display:flex;align-items:center;justify-content:center;font:600 22px var(--serif);color:var(--accent);pointer-events:none}
+.blocker{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);text-align:center}
+.blocker div{max-width:380px;display:flex;flex-direction:column;gap:8px}
+.blocker h2{margin:0;font:500 24px var(--serif)}
 
-/* Narrow: one pane at a time */
+/* Narrow screens */
 @media (max-width:860px){
   .subbar{display:flex}
-  .bar{padding-left:10px;padding-right:10px;gap:6px}
+  .bar{padding-left:8px;padding-right:10px;gap:6px}
   .bar .status{display:none}
   .bar .status + .bar-actions{margin-left:auto}
-  .word{display:none}
   .compile{min-width:0;padding:0 14px}
   .panes{grid-template-columns:minmax(0,1fr)}
   .split{display:none}
@@ -289,26 +378,48 @@ body.kb .issues{max-height:28vh}
   .sheet.open{transform:none}
   .sh-head{position:relative;padding-top:18px}
   .sh-head::before{content:"";position:absolute;top:7px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-2)}
-  .tpls{grid-template-columns:1fr}
 }
-@media (max-width:480px){.brand{display:none}.bar{gap:5px}.bar-actions{gap:5px}.compile{padding:0 12px}}
-@media (max-width:420px){.btn.hide-xs{display:none}}
+@media (max-width:600px){.hide-phone{display:none!important}.back{padding:0 4px}.bar-actions{gap:5px}.compile{padding:0 12px}}
+@media (max-width:420px){.btn.hide-xs{display:none}.tpls{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="app" id="app" data-view="code">
-  <header class="bar">
-    <div class="brand" title="Galley">
+<!-- ================= Projects home ================= -->
+<section class="home" id="home" aria-label="Projects">
+  <header class="hbar">
+    <div class="brand">
       <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="pg-r" x="4.5" y="2.5" width="15" height="19" rx="2"/><path class="pg-l" d="M8 8h8M8 11.5h8M8 15h5"/></svg>
       <span class="word">Galley</span>
     </div>
-    <input id="docTitle" class="doc-title" type="text" aria-label="Document name" autocomplete="off" spellcheck="false" enterkeyhint="done">
+    <span class="grow"></span>
+    <button class="btn" id="homeSettings" type="button"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </header>
+  <div class="home-scroll">
+    <div class="home-inner">
+      <div class="home-head">
+        <div class="titles"><h1>Projects</h1><p class="home-sub" id="homeSub">Saved in this browser on this device</p></div>
+      </div>
+      <div class="home-tools">
+        <input class="input" type="search" id="projSearch" placeholder="Search projects" aria-label="Search projects" autocomplete="off">
+        <button class="btn" id="homeZip" type="button">Open .zip</button>
+        <button class="btn primary" id="homeNew" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New project</button>
+      </div>
+      <div class="pgrid" id="projGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Editor ================= -->
+<div class="app" id="app" data-view="code">
+  <header class="bar">
+    <button class="btn ghost back" id="btnProjects" type="button" title="All projects" aria-label="All projects"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="hide-phone">Projects</span></button>
+    <input id="docTitle" class="doc-title" type="text" aria-label="Project name" autocomplete="off" spellcheck="false" enterkeyhint="done">
     <span class="status" data-status aria-live="polite"></span>
     <div class="bar-actions">
-      <button class="btn icon" id="btnFiles" type="button" aria-label="Files" title="Files"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span class="badge" id="fileCount"></span></button>
-      <button class="btn icon" id="btnHistory" type="button" aria-label="History" title="History"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7.5V12l3 2"/></svg></button>
-      <button class="btn icon" id="btnMore" type="button" aria-label="New document and settings" title="New document and settings"><svg class="i fill" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      <button class="btn icon has-lbl" id="btnFiles" type="button" aria-label="Files" title="Files"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg><span class="lbl-w">Files</span><span class="badge" id="fileCount"></span></button>
+      <button class="btn icon has-lbl" id="btnHistory" type="button" aria-label="History" title="History"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7.5V12l3 2"/></svg><span class="lbl-w">History</span></button>
+      <button class="btn icon has-lbl hide-phone" id="btnSettings" type="button" aria-label="Settings" title="Settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl-w">Settings</span></button>
       <button class="btn compile" id="btnCompile" type="button" title="Compile (Ctrl/⌘ + Enter)"><span class="ci"><svg class="i fill" viewBox="0 0 24 24"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.4-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg></span><span class="cl">Compile</span><kbd class="kbd" id="kbdHint">⌘↵</kbd></button>
     </div>
   </header>
@@ -387,41 +498,62 @@ body.kb .issues{max-height:28vh}
 
 <aside class="sheet" id="sheetFiles" hidden role="dialog" aria-modal="true" aria-labelledby="hFiles">
   <header class="sh-head"><h2 id="hFiles">Files</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
-  <div class="sh-body">
-    <div class="actions">
+  <div class="sh-body" id="filesBody">
+    <div class="ftools">
       <button class="btn primary" id="btnUpload" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>Add files</button>
-      <button class="btn" id="btnNewFile" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New text file</button>
-      <button class="btn" id="btnZipIn" type="button">Open .zip</button>
-      <button class="btn" id="btnZipOut" type="button">Download .zip</button>
+      <button class="btn" id="btnNewFile" type="button">New file</button>
+      <button class="btn" id="btnNewFolder" type="button">New folder</button>
+      <button class="btn icon" id="btnFilesMore" type="button" aria-label="More file actions"><svg class="i fill" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
     </div>
     <form class="newfile" id="newFileForm" hidden>
       <input class="input" id="newFileName" type="text" aria-label="New file name" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
       <button class="btn primary" type="submit">Create</button>
     </form>
-    <p class="note">Photos, PDFs, .bib, .sty, .cls and other .tex files. Large photos are shrunk and turned upright. An Overleaf project download opens with “Open .zip”.</p>
-    <ul class="flist" id="fileList"></ul>
+    <div class="fsub">
+      <span class="grow" id="fsSummary"></span>
+      <label class="row" for="fileSort">Sort <select class="fsort" id="fileSort">
+        <option value="name">Name</option><option value="type">Type</option><option value="size">Size</option><option value="recent">Newest first</option>
+      </select></label>
+      <button class="btn sm" id="btnSelect" type="button">Select</button>
+    </div>
+    <p class="note" id="filesNote">New images go into the <b>figures</b> folder. Drag files onto a folder, or use ⋯ → Move to.</p>
+    <div class="ftree" id="fileList"></div>
+    <div class="selbar" id="selBar" hidden>
+      <span class="grow" id="selCount">0 selected</span>
+      <button class="btn sm" id="selMove" type="button">Move to…</button>
+      <button class="btn sm danger" id="selDelete" type="button">Delete</button>
+      <button class="btn sm primary" id="selDone" type="button">Done</button>
+    </div>
   </div>
 </aside>
 
 <aside class="sheet" id="sheetHistory" hidden role="dialog" aria-modal="true" aria-labelledby="hHistory">
   <header class="sh-head"><h2 id="hHistory">History</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
   <div class="sh-body">
-    <div class="hist-tools">
-      <input class="input" id="histSearch" type="search" placeholder="Search by document name" aria-label="Search history" autocomplete="off">
-      <button class="btn" id="histClear" type="button">Clear all</button>
-    </div>
     <p class="note" id="histMeta"></p>
+    <div class="hist-tools">
+      <input class="input" id="histSearch" type="search" placeholder="Search versions" aria-label="Search history" autocomplete="off">
+      <button class="btn" id="histClear" type="button">Clear</button>
+    </div>
     <div id="histList"></div>
   </div>
 </aside>
 
-<aside class="sheet" id="sheetMore" hidden role="dialog" aria-modal="true" aria-labelledby="hMore">
-  <header class="sh-head"><h2 id="hMore">New &amp; settings</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+<aside class="sheet" id="sheetNew" hidden role="dialog" aria-modal="true" aria-labelledby="hNew">
+  <header class="sh-head"><h2 id="hNew">New project</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
   <div class="sh-body">
-    <h3 class="sec">New document</h3>
+    <label class="field" for="newName"><span>Name</span>
+      <input class="input" id="newName" type="text" placeholder="e.g. Thesis chapter 3" autocomplete="off" enterkeyhint="done">
+    </label>
+    <h3 class="sec">Start from</h3>
     <div class="tpls" id="tpls"></div>
-    <p class="note">Your current files stay in History.</p>
+    <p class="note">Already have a project from Overleaf or another computer? Use “Open .zip” on the Projects page.</p>
+  </div>
+</aside>
 
+<aside class="sheet" id="sheetSettings" hidden role="dialog" aria-modal="true" aria-labelledby="hSettings">
+  <header class="sh-head"><h2 id="hSettings">Settings</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+  <div class="sh-body">
     <h3 class="sec">Compiling</h3>
     <label class="field" for="setServer"><span>Compile server</span>
       <span class="row"><input class="input" id="setServer" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" id="setServerReset" type="button">Reset</button></span>
@@ -438,22 +570,26 @@ body.kb .issues{max-height:28vh}
     </div>
 
     <h3 class="sec">This device</h3>
-    <p class="note" id="storageInfo">History is saved on this device only.</p>
-    <button class="btn" id="btnPersist" type="button">Protect history from automatic clean-up</button>
-    <p class="note">On iPhone or iPad: Share → Add to Home Screen. Galley then opens like an app, loads instantly and Safari won’t clear its history.</p>
-    <p class="note">Keyboard: Ctrl/⌘ + Enter or Ctrl/⌘ + S compiles. Paste a screenshot into the editor to add it as a figure.</p>
+    <p class="note" id="storageInfo">Projects and history are saved in this browser on this device.</p>
+    <button class="btn" id="btnPersist" type="button">Protect my projects from automatic clean-up</button>
+    <p class="note">On iPhone or iPad: Share → Add to Home Screen. Galley then opens like an app, loads instantly and Safari won’t clear your projects.</p>
+    <p class="note">Keyboard: Ctrl/⌘ + Enter or Ctrl/⌘ + S compiles. Paste a screenshot into the editor to add it as a figure. Select text in the PDF to copy it.</p>
   </div>
 </aside>
 
-<div class="ask" id="ask" hidden role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
-  <div class="ask-card">
+<div class="menu" id="menu" hidden role="menu"></div>
+<div class="ask" id="ask" hidden role="alertdialog" aria-modal="true" aria-labelledby="askTitle">
+  <form class="ask-card" id="askForm">
     <h3 id="askTitle"></h3>
     <p id="askText"></p>
-    <div class="ask-btns"><button class="btn" id="askNo" type="button">Cancel</button><button class="btn primary" id="askYes" type="button">OK</button></div>
-  </div>
+    <input class="input" id="askInput" type="text" hidden autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Name">
+    <div class="ask-list" id="askList" hidden></div>
+    <div class="ask-btns"><button class="btn" id="askNo" type="button">Cancel</button><button class="btn primary" id="askYes" type="submit">OK</button></div>
+  </form>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="drop" id="drop" hidden>Drop to add files</div>
+<div class="blocker" id="blocker" hidden><div><h2>Galley was updated</h2><p class="note">Close any other tabs where Galley is open, then this page continues on its own.</p></div></div>
 <input type="file" id="pickAny" multiple hidden>
 <input type="file" id="pickImage" accept="image/*,.pdf,.eps" multiple hidden>
 <input type="file" id="pickZip" accept=".zip,application/zip" hidden>
@@ -470,11 +606,13 @@ const PDFJS_BASE = CDN + 'pdf.js/3.11.174/';
 const JSZIP_URL = CDN + 'jszip/3.10.1/jszip.min.js';
 const DEFAULT_SERVER = 'https://latex.ytotech.com';
 const KEEP_ENTRIES = 300, KEEP_PDFS = 40;
+const IMG_DIR = 'figures';
 const CUR = '\u2038';
 const COMPILERS = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
 const TEXT_EXT = new Set('tex ltx bib sty cls bst bbx cbx lbx dbx def cfg clo dtx ins txt md csv tsv dat tikz pgf asy mp gp json xml svg lco fd bbl ist latexmkrc'.split(' '));
 const SKIP_EXT = new Set('aux log out toc lof lot fls fdb_latexmk blg nav snm vrb xdv synctex idx ilg ind run'.split(' '));
 const GRAPHIC_EXT = new Set(['png', 'jpg', 'jpeg', 'pdf', 'eps']);
+const REF_CMD = /(\\(?:includegraphics\*?|input|include|subfile|bibliography|addbibresource|lstinputlisting|includepdf|includesvg|usepackage|documentclass|bibliographystyle|includeonly)\s*(?:\[[^\]]*\])?\s*\{)([^}]*)(\})/g;
 
 /* ---------- tiny helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -497,10 +635,25 @@ const ICON = {
   image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
   redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>',
+  more: '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+  chev: '<path d="M6 9l6 6 6-6"/>',
+  folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  move: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M10 13h6M13.5 10.5L16 13l-2.5 2.5"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  star: '<path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>',
+  insert: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/><path d="M17 15v6M14 18h6"/>',
+  download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  open: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',
 };
-const icon = name => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
+const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
 const extOf = n => ((n || '').match(/\.([^./]+)$/) || [, ''])[1].toLowerCase();
-const baseOf = n => (n || '').split('/').pop().replace(/\.[^.]+$/, '');
+const baseName = n => (n || '').split('/').pop();
+const baseOf = n => baseName(n).replace(/\.[^.]+$/, '');
+const dirOf = n => { const i = (n || '').lastIndexOf('/'); return i < 0 ? '' : n.slice(0, i); };
+const noExt = p => p.replace(/\.(tex|ltx|bib|png|jpe?g|pdf|eps|sty|cls|bst)$/i, '');
 const isTexLike = n => ['tex', 'ltx'].includes(extOf(n));
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const secs = ms => (ms / 1000).toFixed(1) + ' s';
@@ -518,6 +671,7 @@ async function hashBuf(buf) {
   catch { return 'b:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
 }
 const newId = () => 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const newPid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 function b64(buf) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(new Blob([buf])); }); }
 function mimeFor(ext) { return { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', pdf: 'application/pdf', gif: 'image/gif', webp: 'image/webp', eps: 'application/postscript' }[ext] || 'application/octet-stream'; }
 function sanitizePath(p) {
@@ -528,10 +682,13 @@ function sanitizePath(p) {
   clean.push(m ? `${m[1] || 'file'}.${m[2].toLowerCase()}` : last);
   return clean.join('/');
 }
+const sanitizeFolder = p => String(p || '').replace(/\\/g, '/').split('/').filter(s => s && s !== '.' && s !== '..').map(s => s.replace(/\s+/g, '-').replace(/[^A-Za-z0-9._\-+]/g, '')).filter(Boolean).join('/');
 function readLS(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
 function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 const idle = fn => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 900));
 const isNarrow = () => matchMedia('(max-width: 860px)').matches;
+const coarse = () => matchMedia('(pointer:coarse)').matches;
+const natural = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 const scripts = new Map();
 function loadScript(src) {
   if (!scripts.has(src)) scripts.set(src, new Promise((res, rej) => {
@@ -542,12 +699,19 @@ function loadScript(src) {
   return scripts.get(src);
 }
 const DAY = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const SHORT = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
 const TIME = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 function dayLabel(ts) {
-  const d = new Date(ts), now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (ts >= start) return 'Today'; if (ts >= start - 864e5) return 'Yesterday'; return DAY.format(d);
+  const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (ts >= start) return 'Today'; if (ts >= start - 864e5) return 'Yesterday'; return DAY.format(new Date(ts));
 }
 function whenLabel(ts) { const d = dayLabel(ts); return (d === 'Today' ? 'today' : d === 'Yesterday' ? 'yesterday' : d) + ', ' + TIME.format(new Date(ts)); }
+function ago(ts) {
+  if (!ts) return '';
+  const s = (Date.now() - ts) / 1000;
+  if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  if (dayLabel(ts) === 'Yesterday') return 'yesterday'; return SHORT.format(new Date(ts));
+}
 
 /* ---------- settings ---------- */
 const settings = Object.assign({ server: DEFAULT_SERVER, stopOnError: false, bib: true, theme: 'auto' }, readLS('galley.settings') || {});
@@ -560,22 +724,24 @@ function serverUrl() {
 
 /* ---------- storage (IndexedDB, memory fallback) ---------- */
 const Store = (() => {
-  let dbp = null; const mem = { kv: new Map(), blobs: new Map(), pdfs: new Map(), history: new Map() };
+  let dbp = null; const mem = { kv: new Map(), blobs: new Map(), pdfs: new Map(), history: new Map(), projects: new Map() };
+  const KEYPATH = { history: 'id', projects: 'id' };
   const api = { persistent: true };
   function open() {
     if (dbp) return dbp;
     dbp = new Promise(resolve => {
-      let req;
-      try { req = indexedDB.open('galley', 1); } catch { resolve(null); return; }
+      let req, settled = false; const done = v => { if (!settled) { settled = true; $('#blocker').hidden = true; resolve(v); } };
+      try { req = indexedDB.open('galley', 2); } catch { done(null); return; }
       req.onupgradeneeded = () => {
         const d = req.result;
         for (const s of ['kv', 'blobs', 'pdfs']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s);
-        if (!d.objectStoreNames.contains('history')) d.createObjectStore('history', { keyPath: 'id' });
+        for (const s of ['history', 'projects']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
-      req.onblocked = () => resolve(null);
-      setTimeout(() => resolve(null), 4000);
+      req.onsuccess = () => { const d = req.result; d.onversionchange = () => { d.close(); toast('Galley was updated in another tab. Reload this page.'); }; done(d); };
+      req.onerror = () => done(null);
+      let blocked = false;
+      req.onblocked = () => { blocked = true; $('#blocker').hidden = false; };
+      setTimeout(() => { if (!blocked) done(null); }, 10000);
     }).then(d => { if (!d) api.persistent = false; return d; });
     return dbp;
   }
@@ -590,7 +756,7 @@ const Store = (() => {
   }
   api.ready = open;
   api.get = (st, k) => run(st, 'readonly', (s, m) => s ? s.get(k) : m.get(k));
-  api.put = (st, v, k) => run(st, 'readwrite', (s, m) => s ? (k === undefined ? s.put(v) : s.put(v, k)) : void m.set(k === undefined ? v.id : k, v));
+  api.put = (st, v, k) => run(st, 'readwrite', (s, m) => s ? (KEYPATH[st] ? s.put(v) : s.put(v, k)) : void m.set(KEYPATH[st] ? v[KEYPATH[st]] : k, v));
   api.del = (st, k) => run(st, 'readwrite', (s, m) => s ? s.delete(k) : void m.delete(k));
   api.all = st => run(st, 'readonly', (s, m) => s ? s.getAll() : [...m.values()]);
   api.keys = st => run(st, 'readonly', (s, m) => s ? s.getAllKeys() : [...m.keys()]);
@@ -598,11 +764,29 @@ const Store = (() => {
   return api;
 })();
 
-/* ---------- workspace ---------- */
-let ws = null;                 // { title, main, compiler, active, files:[{name, kind:'text'|'bin', text | hash,type,size}], pristine }
+/* ---------- projects ---------- */
+let ws = null;                 // the open project
 const bin = new Map();         // hash -> { buf, type }
 const pinned = new Set();      // snapshot refs not yet written to History
-let lastCompiledSig = null;
+const Projects = {
+  list: [],
+  async load() { try { this.list = (await Store.all('projects')) || []; } catch { this.list = []; } this.list.forEach(normalizeProject); },
+  get(id) { return this.list.find(p => p.id === id); },
+  sorted() { return [...this.list].sort((a, b) => (b.updated || 0) - (a.updated || 0)); },
+  async save(p) { try { await Store.put('projects', p); } catch (e) { console.warn('save failed', e); toast('Couldn’t save: this device’s storage is full or blocked.'); } },
+  async add(p) { normalizeProject(p); this.list.push(p); await this.save(p); return p; },
+};
+function normalizeProject(p) {
+  if (!COMPILERS[p.compiler]) p.compiler = 'pdflatex';
+  if (!Array.isArray(p.files)) p.files = [];
+  if (!Array.isArray(p.folders)) p.folders = [];
+  if (!Array.isArray(p.collapsed)) p.collapsed = [];
+  if (!p.fileSort) p.fileSort = 'name';
+  if (!p.created) p.created = Date.now();
+  if (!p.updated) p.updated = p.created;
+  if (!p.title) p.title = 'Untitled';
+  return p;
+}
 const fileByName = n => ws && ws.files.find(f => f.name === n);
 
 async function putBlob(buf, type) {
@@ -624,9 +808,9 @@ async function saveWorkspace() {
   clearTimeout(saveTimer);
   if (!ws) return;
   Editor.flush();
-  try { await Store.put('kv', ws, 'workspace'); await Store.put('kv', lastCompiledSig, 'lastSig'); } catch (e) { console.warn('save failed', e); }
+  await Projects.save(ws);
 }
-function touch() { if (ws) ws.pristine = false; scheduleSave(); refreshStatusSoon(); }
+function touch() { if (!ws) return; ws.pristine = false; ws.updated = Date.now(); scheduleSave(); refreshStatusSoon(); }
 
 function sigOf() {
   Editor.flush();
@@ -634,7 +818,6 @@ function sigOf() {
   for (const f of ws.files) parts.push(f.name, f.kind === 'text' ? f.text : f.hash);
   return cyrb53(parts.join('\u0000'));
 }
-
 async function snapshotFiles() {
   Editor.flush();
   const out = [];
@@ -647,22 +830,6 @@ async function snapshotFiles() {
     } else { pinned.add(f.hash); out.push({ name: f.name, kind: 'bin', ref: f.hash, type: f.type, size: f.size }); }
   }
   return out;
-}
-
-function setWorkspace(w, { keepSig = false } = {}) {
-  ws = w;
-  if (!COMPILERS[ws.compiler]) ws.compiler = 'pdflatex';
-  if (!keepSig) lastCompiledSig = null;
-  Editor.reset();
-  const act = fileByName(ws.active);
-  const first = act && act.kind === 'text' ? act.name : fileByName(ws.main) ? ws.main : (ws.files.find(f => f.kind === 'text') || {}).name;
-  Editor.open(first || null);
-  $('#docTitle').value = ws.title || 'Untitled';
-  $('#compiler').value = ws.compiler;
-  renderFileStrip();
-  if (!$('#sheetFiles').hidden) renderFiles();
-  refreshStatus();
-  scheduleSave();
 }
 
 /* ---------- templates ---------- */
@@ -702,7 +869,7 @@ Figure~\ref{fig:plot} is an image file in this project. Add your own
 photos from Files, or with the Image button above the keyboard.
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\linewidth]{figure.png}
+  \includegraphics[width=0.75\linewidth]{figures/plot.png}
   \caption{A damped oscillation and its envelope.}
   \label{fig:plot}
 \end{figure}
@@ -841,7 +1008,6 @@ const TEMPLATES = {
   letter: { label: 'Letter', desc: 'Formal letter layout', title: 'Untitled letter', files: [['main.tex', T_LETTER]] },
   blank: { label: 'Blank', desc: 'Just \\begin{document}', title: 'Untitled', files: [['main.tex', T_BLANK]] },
 };
-
 async function makeSampleFigure() {
   const c = document.createElement('canvas'); c.width = 1200; c.height = 720;
   const g = c.getContext('2d');
@@ -865,15 +1031,15 @@ async function makeSampleFigure() {
   const blob = await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('canvas')), 'image/png'));
   return blob.arrayBuffer();
 }
-
-async function buildTemplate(key) {
-  const t = TEMPLATES[key] || TEMPLATES.blank;
-  const files = t.files.map(([name, text]) => ({ name, kind: 'text', text }));
+async function createProject(key, title) {
+  const t = TEMPLATES[key] || TEMPLATES.blank, now = Date.now();
+  const files = t.files.map(([name, text]) => ({ name, kind: 'text', text, added: now }));
+  const folders = [];
   if (t.figure) {
-    try { const buf = await makeSampleFigure(); const hash = await putBlob(buf, 'image/png'); files.splice(1, 0, { name: 'figure.png', kind: 'bin', hash, type: 'image/png', size: buf.byteLength }); }
+    try { const buf = await makeSampleFigure(); const hash = await putBlob(buf, 'image/png'); files.push({ name: IMG_DIR + '/plot.png', kind: 'bin', hash, type: 'image/png', size: buf.byteLength, added: now }); folders.push(IMG_DIR); }
     catch { /* figure is optional */ }
   }
-  return { title: t.title, main: 'main.tex', compiler: 'pdflatex', active: 'main.tex', files, pristine: true };
+  return Projects.add({ id: newPid(), title: (title || '').trim() || t.title, main: 'main.tex', compiler: 'pdflatex', active: 'main.tex', files, folders, created: now, updated: now, pristine: true });
 }
 
 /* ---------- editor (textarea first, CodeMirror when loaded) ---------- */
@@ -892,13 +1058,10 @@ const Editor = {
     this.cm = CodeMirror.fromTextArea(this.ta, {
       lineNumbers: true, lineWrapping: true, matchBrackets: true, indentUnit: 2, tabSize: 2, indentWithTabs: false,
       inputStyle: 'contenteditable', spellcheck: false, autocorrect: false, autocapitalize: false, viewportMargin: 20,
-      extraKeys: {
-        Tab: cm => cm.somethingSelected() ? cm.indentSelection('add') : cm.replaceSelection('  '),
-        'Shift-Tab': cm => cm.indentSelection('subtract'),
-      },
+      extraKeys: { Tab: cm => cm.somethingSelected() ? cm.indentSelection('add') : cm.replaceSelection('  '), 'Shift-Tab': cm => cm.indentSelection('subtract') },
     });
     this.docs.clear();
-    if (this.name) this.cm.swapDoc(this.docFor(this.name));
+    if (this.name && fileByName(this.name)) this.cm.swapDoc(this.docFor(this.name));
     this.cm.on('changes', () => this.changed());
     this.cm.on('drop', (cm, e) => { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) e.preventDefault(); });
     this.cm.getWrapperElement().addEventListener('paste', onPasteFiles, true);
@@ -925,14 +1088,20 @@ const Editor = {
       for (const [name, d] of this.docs) { if (!d.isClean(d._g)) { const f = fileByName(name); if (f) f.text = d.getValue(); d._g = d.changeGeneration(); } }
     } else if (this.name) { const f = fileByName(this.name); if (f && f.kind === 'text') f.text = this.ta.value; }
   },
-  changed() { if (ws) ws.pristine = false; clearTimeout(this._t); this._t = setTimeout(() => { this.flush(); scheduleSave(); refreshStatus(); }, 350); },
-  reset() { this.docs.clear(); this.name = null; },
+  changed() {
+    if (!ws) return; ws.pristine = false;
+    clearTimeout(this._t); this._t = setTimeout(() => { if (!ws) return; this.flush(); ws.updated = Date.now(); scheduleSave(); refreshStatus(); }, 350);
+  },
+  reset() { this.docs.clear(); this.name = null; if (this.cm) this.cm.swapDoc(CodeMirror.Doc('', 'text/plain')); else this.ta.value = ''; },
   rename(oldN, newN) { const d = this.docs.get(oldN); if (d) { this.docs.delete(oldN); this.docs.set(newN, d); } if (this.name === oldN) this.name = newN; },
   drop(name) { this.docs.delete(name); },
   replaceText(name, text) {
     const d = this.cm && this.docs.get(name);
-    if (d) { d.setValue(text); d._g = d.changeGeneration(); }
-    else if (!this.cm && this.name === name) this.ta.value = text;
+    if (d) {
+      const cur = d.getCursor(), live = this.cm.getDoc() === d, si = live ? this.cm.getScrollInfo() : null;
+      d.setValue(text); d.setCursor(cur); d._g = d.changeGeneration();
+      if (si) this.cm.scrollTo(si.left, si.top);
+    } else if (!this.cm && this.name === name) { const s = this.ta.selectionStart; this.ta.value = text; this.ta.setSelectionRange(s, s); }
   },
   insertLine(name, line, text) {
     this.flush();
@@ -979,6 +1148,17 @@ const Editor = {
       const lh = parseFloat(getComputedStyle(this.ta).lineHeight) || 22; this.ta.scrollTop = Math.max(0, (line - 4) * lh);
     }
   },
+  intoBody() {
+    /* if the cursor is in the preamble, move it to just before \end{document} */
+    const text = this.cm ? this.cm.getValue() : this.ta.value;
+    const b = text.search(/\\begin\{document\}/), e = text.search(/\\end\{document\}/);
+    if (b < 0) return;
+    const at = this.cm ? this.cm.indexFromPos(this.cm.getCursor('from')) : this.ta.selectionStart;
+    if (at > b + 15 && (e < 0 || at <= e)) return;
+    const target = e >= 0 ? e : text.length;
+    if (this.cm) { this.cm.setCursor(this.cm.posFromIndex(target)); this.cm.scrollIntoView(null, 80); }
+    else this.ta.setSelectionRange(target, target);
+  },
   undo() { if (this.cm) { this.cm.undo(); this.cm.focus(); } },
   redo() { if (this.cm) { this.cm.redo(); this.cm.focus(); } },
 };
@@ -987,87 +1167,315 @@ async function loadCodeMirror() {
   await Promise.all([loadScript(CM_BASE + 'mode/stex/stex.min.js'), loadScript(CM_BASE + 'addon/edit/matchbrackets.min.js')]);
 }
 
-/* ---------- file strip + files sheet ---------- */
+/* ---------- popover menu + dialogs + toast ---------- */
+let menuAnchor = null;
+function openMenu(anchor, items) {
+  const m = $('#menu'); m.replaceChildren();
+  for (const it of items) {
+    if (!it) continue;
+    if (it === '-') { m.append(h('div', { class: 'menu-sep', role: 'separator' })); continue; }
+    m.append(h('button', { class: 'menu-item' + (it.danger ? ' danger' : ''), type: 'button', role: 'menuitem', html: (it.icon ? icon(it.icon) : '') + `<span></span>`, onclick: () => { closeMenu(); it.act(); } }));
+    m.lastChild.lastChild.textContent = it.label;
+  }
+  m.hidden = false; menuAnchor = anchor;
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  let x = r.right - mw, y = r.bottom + 4;
+  x = Math.max(8, Math.min(x, innerWidth - 8 - mw));
+  if (y + mh > innerHeight - 8) y = Math.max(8, r.top - mh - 4);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  if (!coarse()) setTimeout(() => { const b = m.querySelector('button'); if (b) b.focus(); }, 0);
+}
+function closeMenu() { $('#menu').hidden = true; menuAnchor = null; }
+document.addEventListener('pointerdown', e => {
+  const m = $('#menu'); if (m.hidden) return;
+  if (m.contains(e.target) || (menuAnchor && menuAnchor.contains(e.target))) return;
+  closeMenu();
+}, true);
+
+let askResolve = null, askMode = 'confirm';
+function dialog({ title, text = '', ok = 'OK', input = null, choices = null, danger = false }) {
+  if (askResolve) finishAsk(null);
+  closeMenu();
+  askMode = input != null ? 'input' : choices ? 'choice' : 'confirm';
+  $('#askTitle').textContent = title; $('#askText').textContent = text;
+  const inp = $('#askInput'), list = $('#askList'), yes = $('#askYes');
+  inp.hidden = askMode !== 'input'; list.hidden = askMode !== 'choice'; yes.hidden = askMode === 'choice';
+  yes.textContent = ok; yes.classList.toggle('danger', !!danger);
+  list.replaceChildren();
+  if (choices) for (const c of choices) list.append(h('button', { type: 'button', html: (c.icon ? icon(c.icon) : '') + '<span></span>', onclick: () => finishAsk(c.value) }));
+  if (choices) [...list.children].forEach((b, i) => { b.lastChild.textContent = choices[i].label; });
+  if (askMode === 'input') inp.value = input;
+  $('#ask').hidden = false;
+  setTimeout(() => { if (askMode === 'input') { inp.focus(); const v = inp.value, sl = v.lastIndexOf('/'), dot = v.lastIndexOf('.'); if (v === input) inp.setSelectionRange(sl + 1, dot > sl ? dot : v.length); } else if (askMode === 'confirm') yes.focus(); }, 30);
+  return new Promise(res => { askResolve = res; });
+}
+function finishAsk(v) { $('#ask').hidden = true; const r = askResolve; askResolve = null; if (r) r(v); }
+const ask = (title, text, ok = 'OK', danger = false) => dialog({ title, text, ok, danger }).then(v => v === true);
+const promptBox = (title, value, ok = 'Save', text = '') => dialog({ title, text, ok, input: value || '' });
+const chooseBox = (title, choices, text = '') => dialog({ title, text, choices });
+let toastT = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3000); }
+
+/* ---------- file strip (tabs) ---------- */
 function renderFileStrip() {
   const box = $('#fileTabs'); box.replaceChildren();
   if (!ws) return;
   for (const f of ws.files) {
     if (f.kind !== 'text') continue;
-    box.append(h('button', { class: 'ftab', type: 'button', role: 'tab', 'aria-selected': String(f.name === Editor.name), onclick: () => { Editor.open(f.name); } },
-      f.name, f.name === ws.main ? h('span', { class: 'main' }, 'main') : null));
+    const active = f.name === Editor.name;
+    const tab = h('button', { class: 'ftab', type: 'button', role: 'tab', title: f.name, 'aria-selected': String(active), onclick: () => Editor.open(f.name) },
+      baseName(f.name), f.name === ws.main ? h('span', { class: 'main' }, 'main') : null);
+    tab.addEventListener('contextmenu', e => { e.preventDefault(); fileMenu(tab, f); });
+    box.append(tab);
+    if (active) box.append(h('button', { class: 'ftab-menu', type: 'button', 'aria-label': `Options for ${f.name}`, title: 'Rename, move or delete', html: icon('chev', 'sm'), onclick: e => fileMenu(e.currentTarget, f) }));
   }
   $('#fileCount').textContent = ws.files.length > 1 ? String(ws.files.length) : '';
   const sel = box.querySelector('[aria-selected="true"]'); if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-let thumbUrls = [];
-function renderFiles() {
-  const ul = $('#fileList');
-  thumbUrls.forEach(u => URL.revokeObjectURL(u)); thumbUrls = [];
-  ul.replaceChildren();
+/* ---------- files: references, folders, moves ---------- */
+function referencedArgs() {
+  const set = new Set(); let gp = false;
   for (const f of ws.files) {
-    const ext = extOf(f.name), isMain = f.name === ws.main;
-    const thumb = h('span', { class: 'fthumb', 'aria-hidden': 'true' });
-    if (f.kind === 'bin' && /^(png|jpe?g|gif|webp)$/.test(ext)) {
-      getBin(f.hash).then(b => { if (!b) return; const u = URL.createObjectURL(new Blob([b.buf], { type: f.type })); thumbUrls.push(u); thumb.append(h('img', { src: u, alt: '', loading: 'lazy' })); });
-    } else thumb.append(h('span', { class: 'fext' }, ext || 'file'));
-    const size = f.kind === 'text' ? fmtSize(f.text.length) : fmtSize(f.size);
-    const info = h('span', { class: 'finfo' }, h('span', { class: 'fname' }, f.name), h('span', { class: 'fmeta' }, isMain ? h('b', null, 'Main file') : null, isMain ? ' · ' : '', size));
-    const acts = h('span', { class: 'facts' });
-    if (f.kind === 'text') acts.append(h('button', { class: 'btn sm', type: 'button', onclick: () => { Editor.open(f.name); closeSheets(); setView('code'); } }, 'Edit'));
-    if (isTexLike(f.name) && !isMain) acts.append(h('button', { class: 'btn sm', type: 'button', onclick: () => { ws.main = f.name; touch(); renderFiles(); renderFileStrip(); toast(f.name + ' is now the main file'); } }, 'Make main'));
-    if (f.kind === 'bin' && GRAPHIC_EXT.has(ext)) acts.append(h('button', { class: 'btn sm', type: 'button', onclick: () => { closeSheets(); insertFigure(f.name); } }, 'Insert in document'));
-    const li = h('li', { class: 'frow' }, thumb, info, acts);
-    acts.append(h('button', { class: 'btn icon sm ghost', type: 'button', 'aria-label': 'Rename ' + f.name, title: 'Rename', html: icon('pencil'), onclick: () => startRename(li, f) }));
-    acts.append(h('button', { class: 'btn icon sm ghost danger', type: 'button', 'aria-label': 'Delete ' + f.name, title: 'Delete', html: icon('trash'), onclick: () => deleteFile(f) }));
-    ul.append(li);
+    if (f.kind !== 'text' || !/^(tex|ltx|sty|cls)$/.test(extOf(f.name))) continue;
+    const t = f.text.replace(/(^|[^\\])%.*$/gm, '$1');
+    if (/\\graphicspath/.test(t)) gp = true;
+    for (const m of t.matchAll(REF_CMD)) for (const a of m[2].split(',')) { const v = a.trim().replace(/^\.\//, ''); if (v) set.add(v); }
   }
+  return { set, gp };
 }
-function startRename(li, f) {
-  const info = li.querySelector('.finfo');
-  const input = h('input', { class: 'input', type: 'text', value: f.name, 'aria-label': 'New name', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'done' });
-  info.replaceChildren(input); input.focus(); input.setSelectionRange(0, f.name.length - (extOf(f.name).length ? extOf(f.name).length + 1 : 0));
-  let done = false;
-  const finish = ok => {
-    if (done) return; done = true;
-    const nn = sanitizePath(input.value);
-    if (ok && nn && nn !== f.name) {
-      if (fileByName(nn)) { toast('A file called ' + nn + ' already exists.'); }
-      else { Editor.flush(); Editor.rename(f.name, nn); if (ws.main === f.name) ws.main = nn; if (ws.active === f.name) ws.active = nn; f.name = nn; touch(); renderFileStrip(); }
-    }
-    renderFiles();
-  };
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } });
-  input.addEventListener('blur', () => finish(true));
+function isUsed(f, refs) {
+  if (f.name === ws.main) return true;
+  const p = f.name, b = baseName(p), e = extOf(p);
+  if (refs.set.has(p) || refs.set.has(noExt(p))) return true;
+  if ((e === 'sty' || e === 'cls' || e === 'bst') && (refs.set.has(baseOf(p)))) return true;
+  if (refs.gp && (refs.set.has(b) || refs.set.has(noExt(b)))) return true;
+  return false;
 }
-async function deleteFile(f) {
-  if (!await ask(`Delete ${f.name}?`, 'It stays in any History versions that used it.', 'Delete')) return;
+function updateRefs(oldPath, newPath) {
+  let count = 0;
   Editor.flush();
-  ws.files = ws.files.filter(x => x !== f); Editor.drop(f.name);
-  if (ws.main === f.name) ws.main = (ws.files.find(x => isTexLike(x.name)) || {}).name || '';
-  if (Editor.name === f.name) Editor.open(ws.main || (ws.files.find(x => x.kind === 'text') || {}).name);
-  touch(); renderFiles(); renderFileStrip(); gcSoon();
+  const oN = noExt(oldPath), nN = noExt(newPath);
+  for (const f of ws.files) {
+    if (f.kind !== 'text' || !/^(tex|ltx|sty|cls)$/.test(extOf(f.name))) continue;
+    const t2 = f.text.replace(REF_CMD, (m, a, arg, c) => {
+      if (/^\\(usepackage|documentclass|bibliographystyle)/.test(a)) return m;
+      const parts = arg.split(',').map(x => {
+        const t = x.trim().replace(/^\.\//, ''), pad = x.match(/^\s*/)[0], tail = x.match(/\s*$/)[0];
+        if (t === oldPath) { count++; return pad + newPath + tail; }
+        if (oN !== oldPath && t === oN) { count++; return pad + nN + tail; }
+        return x;
+      });
+      return a + parts.join(',') + c;
+    });
+    if (t2 !== f.text) { f.text = t2; Editor.replaceText(f.name, t2); }
+  }
+  return count;
 }
-
+function allFolders() {
+  const s = new Set(ws.folders);
+  for (const f of ws.files) { let d = dirOf(f.name); while (d) { s.add(d); d = dirOf(d); } }
+  return [...s].sort(natural.compare);
+}
+function ensureFolder(d) { if (d && !ws.folders.includes(d)) ws.folders.push(d); }
 function uniqueName(name) {
   if (!fileByName(name)) return name;
-  const m = name.match(/^(.*?)(\.[^.]*)?$/); let i = 2;
+  const m = name.match(/^(.*?)(\.[^./]*)?$/); let i = 2;
   while (fileByName(`${m[1]}-${i}${m[2] || ''}`)) i++;
   return `${m[1]}-${i}${m[2] || ''}`;
 }
+function renameFileTo(f, nn, { quiet = false } = {}) {
+  nn = sanitizePath(nn);
+  if (!nn || nn === f.name) return 0;
+  if (f.name === ws.main && dirOf(nn)) { toast('The main file has to stay at the top level.'); return -1; }
+  if (fileByName(nn)) { toast(`${nn} already exists.`); return -1; }
+  Editor.flush();
+  const old = f.name;
+  Editor.rename(old, nn); if (ws.main === old) ws.main = nn; if (ws.active === old) ws.active = nn;
+  f.name = nn; ensureFolder(dirOf(nn));
+  const n = updateRefs(old, nn);
+  if (!quiet) toast(n ? `Renamed · updated ${plural(n, 'reference')}` : `Renamed to ${nn}`);
+  return n;
+}
+async function moveFiles(names, dest) {
+  let moved = 0, refs = 0;
+  for (const name of names) {
+    const f = fileByName(name); if (!f) continue;
+    const target = (dest ? dest + '/' : '') + baseName(f.name);
+    if (target === f.name) continue;
+    const r = renameFileTo(f, fileByName(target) ? uniqueName(target) : target, { quiet: true });
+    if (r >= 0) { moved++; refs += r; }
+  }
+  if (dest) ensureFolder(dest);
+  touch(); renderFiles(); renderFileStrip();
+  if (moved) toast(`Moved ${plural(moved, 'file')} to ${dest || 'the top level'}${refs ? ` · updated ${plural(refs, 'reference')}` : ''}`);
+}
+async function pickFolder(title) {
+  const choices = [{ label: 'Top level', value: '\u0000top', icon: 'folder' }, ...allFolders().map(d => ({ label: d, value: d, icon: 'folder' })), { label: 'New folder…', value: '\u0000new', icon: 'plus' }];
+  const v = await chooseBox(title, choices);
+  if (v == null) return null;
+  if (v === '\u0000top') return '';
+  if (v === '\u0000new') { const n = sanitizeFolder(await promptBox('New folder', '', 'Create')); if (!n) return null; ensureFolder(n); return n; }
+  return v;
+}
+async function deleteFiles(names) {
+  if (!names.length) return;
+  const one = names.length === 1;
+  if (!await ask(one ? `Delete ${baseName(names[0])}?` : `Delete ${plural(names.length, 'file')}?`, 'They stay in any History versions that used them.', 'Delete', true)) return;
+  Editor.flush();
+  for (const n of names) { ws.files = ws.files.filter(x => x.name !== n); Editor.drop(n); }
+  if (!fileByName(ws.main)) ws.main = (ws.files.find(x => isTexLike(x.name) && !dirOf(x.name)) || {}).name || '';
+  if (!Editor.name || !fileByName(Editor.name)) Editor.open(ws.main || (ws.files.find(x => x.kind === 'text') || {}).name);
+  if (fileSel) names.forEach(n => fileSel.delete(n));
+  touch(); renderFiles(); renderFileStrip(); gcSoon();
+  toast(one ? `Deleted ${baseName(names[0])}` : `Deleted ${plural(names.length, 'file')}`);
+}
+function fileMenu(anchor, f) {
+  const ext = extOf(f.name), isMain = f.name === ws.main;
+  openMenu(anchor, [
+    f.kind === 'text' && Editor.name !== f.name && { label: 'Edit', icon: 'edit', act: () => { Editor.open(f.name); closeSheets(); setView('code'); } },
+    f.kind === 'bin' && GRAPHIC_EXT.has(ext) && { label: 'Insert in document', icon: 'insert', act: () => { closeSheets(); insertFigure(f.name); } },
+    isTexLike(f.name) && !isMain && !dirOf(f.name) && { label: 'Make main file', icon: 'star', act: () => { ws.main = f.name; touch(); renderFiles(); renderFileStrip(); toast(`${f.name} is now the main file`); } },
+    { label: 'Rename…', icon: 'pencil', act: async () => { const v = await promptBox('Rename file', f.name, 'Rename', 'Include a folder in the name to move it, e.g. figures/photo.jpg'); if (v != null && renameFileTo(f, v) >= 0) { touch(); renderFiles(); renderFileStrip(); } } },
+    !isMain && { label: 'Move to…', icon: 'move', act: async () => { const d = await pickFolder(`Move ${baseName(f.name)} to`); if (d != null) moveFiles([f.name], d); } },
+    { label: 'Download', icon: 'download', act: () => downloadFile(f) },
+    '-',
+    { label: 'Delete', icon: 'trash', danger: true, act: () => deleteFiles([f.name]) },
+  ]);
+}
+async function downloadFile(f) {
+  if (f.kind === 'text') { Editor.flush(); saveBlob(new Blob([f.text], { type: 'text/plain' }), baseName(f.name)); }
+  else { const b = await getBin(f.hash); if (b) saveBlob(new Blob([b.buf], { type: f.type }), baseName(f.name)); }
+}
+
+/* ---------- files panel ---------- */
+let fileSel = null, thumbUrls = [], pendingDest;
+function sortFiles(list) {
+  const by = ws.fileSort || 'name';
+  const cmpName = (a, b) => natural.compare(baseName(a.name), baseName(b.name));
+  const size = f => f.kind === 'text' ? f.text.length : f.size || 0;
+  return [...list].sort((a, b) => {
+    if (a.name === ws.main) return -1; if (b.name === ws.main) return 1;
+    if (by === 'type') return natural.compare(extOf(a.name), extOf(b.name)) || cmpName(a, b);
+    if (by === 'size') return size(b) - size(a) || cmpName(a, b);
+    if (by === 'recent') return (b.added || 0) - (a.added || 0) || cmpName(a, b);
+    return cmpName(a, b);
+  });
+}
+function renderFiles() {
+  if (!ws || $('#sheetFiles').hidden) return;
+  thumbUrls.forEach(u => URL.revokeObjectURL(u)); thumbUrls = [];
+  const tree = $('#fileList'); tree.replaceChildren();
+  const refs = referencedArgs();
+  const folders = allFolders();
+  const total = ws.files.reduce((s, f) => s + (f.kind === 'text' ? f.text.length : f.size || 0), 0);
+  $('#fsSummary').textContent = `${plural(ws.files.length, 'file')}${folders.length ? ' · ' + plural(folders.length, 'folder') : ''} · ${fmtSize(total)}`;
+  $('#fileSort').value = ws.fileSort || 'name';
+  $('#btnSelect').textContent = fileSel ? 'Cancel' : 'Select';
+  $('#selBar').hidden = !fileSel;
+  if (fileSel) $('#selCount').textContent = fileSel.size ? `${fileSel.size} selected` : 'Tap files to select';
+  $('#selMove').disabled = $('#selDelete').disabled = !(fileSel && fileSel.size);
+  const groups = [{ dir: '', files: ws.files.filter(f => !dirOf(f.name)) }, ...folders.map(d => ({ dir: d, files: ws.files.filter(f => dirOf(f.name) === d) }))];
+  for (const g of groups) {
+    if (!g.dir && !g.files.length && !folders.length) continue;
+    tree.append(groupEl(g, refs, folders.length > 0));
+  }
+  if (!ws.files.length && !folders.length) tree.append(h('p', { class: 'empty-note' }, 'No files yet. Add files or create a new one.'));
+}
+function groupEl(g, refs, withHead) {
+  const closed = g.dir && ws.collapsed.includes(g.dir);
+  const el = h('div', { class: 'fgroup' + (g.dir ? ' in' : '') + (closed ? ' closed' : ''), 'data-dir': g.dir });
+  if (withHead) {
+    const head = h('div', { class: 'fhead' });
+    if (g.dir) {
+      head.append(h('button', { class: 'tog', type: 'button', 'aria-expanded': String(!closed), html: icon('chev', 'sm chev') + icon('folder', 'sm') + '<span class="nm"></span><span class="cnt"></span>', onclick: () => { const i = ws.collapsed.indexOf(g.dir); if (i < 0) ws.collapsed.push(g.dir); else ws.collapsed.splice(i, 1); scheduleSave(); renderFiles(); } }));
+      head.querySelector('.nm').textContent = g.dir; head.querySelector('.cnt').textContent = g.files.length ? String(g.files.length) : 'empty';
+      head.append(h('button', { class: 'btn icon sm ghost', type: 'button', title: `Add files to ${g.dir}`, 'aria-label': `Add files to ${g.dir}`, html: icon('plus'), onclick: () => { pendingDest = g.dir; $('#pickAny').click(); } }));
+      head.append(h('button', { class: 'btn icon sm ghost', type: 'button', 'aria-label': `Options for folder ${g.dir}`, html: icon('more'), onclick: e => folderMenu(e.currentTarget, g.dir) }));
+    } else {
+      head.append(h('span', { class: 'tog', style: 'cursor:default', html: icon('folder', 'sm') + '<span class="nm">Top level</span>' }));
+    }
+    el.append(head);
+  }
+  const rows = h('div', { class: 'frows' });
+  for (const f of sortFiles(g.files)) rows.append(rowEl(f, refs));
+  el.append(rows);
+  el.addEventListener('dragover', e => { const t = [...(e.dataTransfer.types || [])]; if (t.includes('application/x-galley-files') || t.includes('Files')) { e.preventDefault(); e.stopPropagation(); el.classList.add('drop-ok'); } });
+  el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('drop-ok'); });
+  el.addEventListener('drop', e => {
+    el.classList.remove('drop-ok');
+    const raw = e.dataTransfer.getData('application/x-galley-files');
+    if (raw) { e.preventDefault(); e.stopPropagation(); moveFiles(JSON.parse(raw), g.dir); return; }
+    if (e.dataTransfer.files && e.dataTransfer.files.length) { e.preventDefault(); e.galleyDone = true; addFiles(e.dataTransfer.files, { dest: g.dir }); }
+  });
+  return el;
+}
+function rowEl(f, refs) {
+  const ext = extOf(f.name), isMain = f.name === ws.main, selected = fileSel && fileSel.has(f.name);
+  const thumb = h('span', { class: 'fthumb', 'aria-hidden': 'true' });
+  if (f.kind === 'bin' && /^(png|jpe?g|gif|webp)$/.test(ext)) {
+    getBin(f.hash).then(b => { if (!b) return; const u = URL.createObjectURL(new Blob([b.buf], { type: f.type })); thumbUrls.push(u); thumb.append(h('img', { src: u, alt: '', loading: 'lazy' })); });
+  } else thumb.append(h('span', { class: 'fext' }, ext || 'file'));
+  const size = f.kind === 'text' ? fmtSize(f.text.length) : fmtSize(f.size);
+  const meta = h('span', { class: 'fmeta' });
+  if (isMain) meta.append(h('b', null, 'Main file'));
+  meta.append(h('span', null, size));
+  if (!isUsed(f, refs) && !/^(txt|md|json|csv|dat)$/.test(ext)) meta.append(h('span', { class: 'unused', title: 'No \\includegraphics, \\input or \\bibliography points to this file' }, 'Not used'));
+  const row = h('div', { class: 'frow' + (selected ? ' sel' : ''), 'data-name': f.name, title: f.name });
+  if (fileSel) row.append(h('input', { class: 'ck', type: 'checkbox', checked: selected, tabindex: '-1', 'aria-label': 'Select ' + f.name }));
+  row.append(thumb, h('span', { class: 'finfo' }, h('span', { class: 'fname' }, baseName(f.name)), meta));
+  const more = h('button', { class: 'btn icon sm ghost', type: 'button', 'aria-label': `Options for ${f.name}`, html: icon('more'), onclick: e => { e.stopPropagation(); fileMenu(e.currentTarget, f); } });
+  if (!fileSel) row.append(more);
+  row.addEventListener('click', () => {
+    if (fileSel) { if (fileSel.has(f.name)) fileSel.delete(f.name); else fileSel.add(f.name); renderFiles(); return; }
+    if (f.kind === 'text') { Editor.open(f.name); closeSheets(); setView('code'); } else fileMenu(more, f);
+  });
+  if (!coarse()) {
+    row.draggable = true;
+    row.addEventListener('dragstart', e => {
+      const names = fileSel && fileSel.has(f.name) ? [...fileSel] : [f.name];
+      e.dataTransfer.setData('application/x-galley-files', JSON.stringify(names)); e.dataTransfer.effectAllowed = 'move'; row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+  }
+  return row;
+}
+function folderMenu(anchor, dir) {
+  const inside = ws.files.filter(f => f.name.startsWith(dir + '/'));
+  openMenu(anchor, [
+    { label: 'Add files here', icon: 'plus', act: () => { pendingDest = dir; $('#pickAny').click(); } },
+    { label: 'Rename folder…', icon: 'pencil', act: async () => {
+      const v = sanitizeFolder(await promptBox('Rename folder', dir, 'Rename', 'Files inside move with it, and your .tex files are updated.'));
+      if (!v || v === dir) return;
+      if (allFolders().includes(v)) { toast(`A folder called ${v} already exists.`); return; }
+      let refs = 0;
+      for (const f of inside) { const r = renameFileTo(f, v + f.name.slice(dir.length), { quiet: true }); if (r > 0) refs += r; }
+      ws.folders = [...new Set(ws.folders.map(d => d === dir || d.startsWith(dir + '/') ? v + d.slice(dir.length) : d))];
+      ws.collapsed = ws.collapsed.map(d => d === dir ? v : d);
+      touch(); renderFiles(); renderFileStrip(); toast(`Renamed folder${refs ? ` · updated ${plural(refs, 'reference')}` : ''}`);
+    } },
+    '-',
+    { label: inside.length ? `Delete folder and ${plural(inside.length, 'file')}` : 'Delete folder', icon: 'trash', danger: true, act: async () => {
+      if (inside.length) { await deleteFiles(inside.map(f => f.name)); if (ws.files.some(f => f.name.startsWith(dir + '/'))) return; }
+      ws.folders = ws.folders.filter(d => d !== dir && !d.startsWith(dir + '/')); ws.collapsed = ws.collapsed.filter(d => d !== dir); touch(); renderFiles();
+    } },
+  ]);
+}
+
+/* ---------- adding files ---------- */
 function putTextFile(name, text) {
   const f = fileByName(name);
   if (f && f.kind === 'text') { f.text = text; Editor.replaceText(name, text); return { name, replaced: true }; }
   if (f) ws.files = ws.files.filter(x => x !== f);
-  ws.files.push({ name, kind: 'text', text });
+  ws.files.push({ name, kind: 'text', text, added: Date.now() }); ensureFolder(dirOf(name));
   return { name, replaced: !!f };
 }
 async function putBinFile(name, buf, type) {
   const hash = await putBlob(buf, type);
   const f = fileByName(name);
-  if (f && f.kind === 'bin') { f.hash = hash; f.type = type; f.size = buf.byteLength; return { name, replaced: true }; }
+  if (f && f.kind === 'bin') { f.hash = hash; f.type = type; f.size = buf.byteLength; f.added = Date.now(); return { name, replaced: true }; }
   if (f) { ws.files = ws.files.filter(x => x !== f); Editor.drop(name); }
-  ws.files.push({ name, kind: 'bin', hash, type, size: buf.byteLength });
+  ws.files.push({ name, kind: 'bin', hash, type, size: buf.byteLength, added: Date.now() }); ensureFolder(dirOf(name));
   return { name, replaced: !!f };
 }
 async function looksText(file) {
@@ -1088,7 +1496,7 @@ function decodeImage(file) {
 }
 async function prepareImage(file, nameHint) {
   const ext = extOf(file.name) || (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
-  let base = sanitizePath(nameHint || baseOf(file.name)) || 'image';
+  const base = sanitizePath(nameHint || baseOf(file.name)) || 'image';
   const heic = /hei[cf]/i.test(file.type) || ext === 'heic' || ext === 'heif';
   const convert = heic || ['webp', 'gif', 'bmp', 'tif', 'tiff'].includes(ext);
   const isJpg = ext === 'jpg' || ext === 'jpeg' || file.type === 'image/jpeg';
@@ -1107,34 +1515,36 @@ async function prepareImage(file, nameHint) {
     return { base, ext: png ? 'png' : 'jpg', buf: await blob.arrayBuffer(), type, note: `${fmtSize(file.size)} → ${fmtSize(blob.size)}` };
   } finally { URL.revokeObjectURL(u); }
 }
-
-async function addFiles(list, { insertFigure: doInsert = false, pasted = false } = {}) {
+async function addFiles(list, { dest, insertFigure: doInsert = false, pasted = false } = {}) {
+  if (!ws) return;
   const files = [...list]; if (!files.length) return;
   if (files.length === 1 && extOf(files[0].name) === 'zip') { await importZip(files[0]); return; }
   const added = []; let replaced = 0, shrunk = 0;
+  const into = (name, isImg) => { const d = dest !== undefined ? dest : isImg ? IMG_DIR : ''; return (d ? d + '/' : '') + name; };
   for (const file of files) {
     try {
       const ext = extOf(file.name);
-      if (ext === 'zip') { toast('Open .zip files one at a time with “Open .zip”.'); continue; }
+      if (ext === 'zip') { toast('Open .zip files from the Projects page.'); continue; }
       if (isImageFile(file)) {
         const stamp = new Date().toISOString().replace(/\D/g, '').slice(2, 14);
         const r = await prepareImage(file, pasted ? 'pasted-' + stamp : null);
-        let name = `${r.base}.${r.ext}`;
+        let name = into(`${r.base}.${r.ext}`, true);
         if (/^(image|photo)(-\d+)?$/i.test(r.base) && fileByName(name)) name = uniqueName(name);
         const res = await putBinFile(name, r.buf, r.type);
         if (res.replaced) replaced++; if (r.note) shrunk++;
         added.push(name);
       } else if (!GRAPHIC_EXT.has(ext) && (TEXT_EXT.has(ext) || await looksText(file))) {
-        const res = putTextFile(sanitizePath(file.name) || 'untitled.tex', await file.text());
+        const res = putTextFile(into(sanitizePath(baseName(file.name)) || 'untitled.tex', false), await file.text());
         if (res.replaced) replaced++; added.push(res.name);
       } else {
-        const res = await putBinFile(sanitizePath(file.name) || 'file', await file.arrayBuffer(), file.type || mimeFor(ext));
+        const res = await putBinFile(into(sanitizePath(baseName(file.name)) || 'file', GRAPHIC_EXT.has(ext)), await file.arrayBuffer(), file.type || mimeFor(ext));
         if (res.replaced) replaced++; added.push(res.name);
       }
     } catch (e) { toast(`Couldn’t add ${file.name}: ${e.message}`); }
   }
   if (!added.length) return;
-  touch(); renderFileStrip(); if (!$('#sheetFiles').hidden) renderFiles();
+  if (!fileByName(ws.main)) { const t = ws.files.find(f => isTexLike(f.name) && !dirOf(f.name)); if (t) ws.main = t.name; }
+  touch(); renderFileStrip(); renderFiles();
   const parts = [`Added ${added.length === 1 ? added[0] : plural(added.length, 'file')}`];
   if (replaced) parts.push(`${replaced} replaced`); if (shrunk) parts.push(`${shrunk === 1 ? 'photo' : shrunk + ' photos'} resized`);
   toast(parts.join(' · '));
@@ -1142,11 +1552,10 @@ async function addFiles(list, { insertFigure: doInsert = false, pasted = false }
 }
 function onPasteFiles(e) {
   const files = [...(e.clipboardData && e.clipboardData.files || [])].filter(f => /^image\//.test(f.type));
-  if (!files.length) return;
+  if (!files.length || !ws) return;
   e.preventDefault(); e.stopPropagation();
   addFiles(files, { insertFigure: true, pasted: true });
 }
-
 function ensurePackage(pkg) {
   const f = fileByName(ws.main); if (!f) return;
   Editor.flush();
@@ -1161,41 +1570,42 @@ function insertFigure(name) {
   if (!Editor.name || !isTexLike(Editor.name)) Editor.open(ws.main);
   if (!Editor.name) { toast('Add a .tex file first.'); return; }
   ensurePackage('graphicx');
+  Editor.intoBody();
   const label = 'fig:' + baseOf(name).replace(/[^A-Za-z0-9]+/g, '-').toLowerCase();
   Editor.insert(`\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{${name}}\n  \\caption{${CUR}}\n  \\label{${label}}\n\\end{figure}\n`, { block: true });
   setView('code');
 }
 
-/* zip in/out */
+/* ---------- zip in/out ---------- */
 async function loadJSZip() { await loadScript(JSZIP_URL); return window.JSZip; }
-async function exportZip() {
+async function exportZip(p = ws) {
   let JSZip; try { JSZip = await loadJSZip(); } catch { toast('Couldn’t load the zip tool. Check your connection.'); return; }
-  Editor.flush(); const zip = new JSZip();
-  for (const f of ws.files) { if (f.kind === 'text') zip.file(f.name, f.text); else { const b = await getBin(f.hash); if (b) zip.file(f.name, b.buf); } }
-  saveBlob(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }), slug(ws.title) + '.zip');
+  if (p === ws) Editor.flush();
+  const zip = new JSZip();
+  for (const f of p.files) { if (f.kind === 'text') zip.file(f.name, f.text); else { const b = await getBin(f.hash); if (b) zip.file(f.name, b.buf); } }
+  saveBlob(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }), slug(p.title) + '.zip');
 }
 async function importZip(file) {
-  if (!await ask('Open this .zip as a new document?', 'Your current files stay in History.', 'Open')) return;
   let JSZip; try { JSZip = await loadJSZip(); } catch { toast('Couldn’t load the zip tool. Check your connection.'); return; }
   let zip; try { zip = await JSZip.loadAsync(file); } catch { toast('That file isn’t a readable .zip.'); return; }
   const entries = Object.values(zip.files).filter(e => !e.dir && !/(^|\/)__MACOSX\//.test(e.name) && !/(^|\/)\.[^/]*$/.test(e.name));
   const tops = new Set(entries.map(e => e.name.includes('/') ? e.name.split('/')[0] : ''));
   const strip = tops.size === 1 && !tops.has('') ? [...tops][0] + '/' : '';
-  const files = [];
+  const files = [], now = Date.now();
   for (const e of entries) {
     const name = sanitizePath(e.name.slice(strip.length)); const ext = extOf(name);
     if (!name || SKIP_EXT.has(ext) || /\.synctex\.gz$/.test(name)) continue;
-    if (TEXT_EXT.has(ext)) files.push({ name, kind: 'text', text: await e.async('string') });
-    else { const buf = await e.async('arraybuffer'); const type = mimeFor(ext); const hash = await putBlob(buf, type); files.push({ name, kind: 'bin', hash, type, size: buf.byteLength }); }
+    if (TEXT_EXT.has(ext)) files.push({ name, kind: 'text', text: await e.async('string'), added: now });
+    else { const buf = await e.async('arraybuffer'); const type = mimeFor(ext); const hash = await putBlob(buf, type); files.push({ name, kind: 'bin', hash, type, size: buf.byteLength, added: now }); }
   }
   const texs = files.filter(f => isTexLike(f.name) && /\\documentclass/.test(f.text));
-  const main = (texs.find(f => f.name === 'main.tex') || texs.find(f => !f.name.includes('/')) || texs[0] || files.find(f => isTexLike(f.name)) || {}).name;
+  const main = (texs.find(f => f.name === 'main.tex') || texs.find(f => !dirOf(f.name)) || texs[0] || files.find(f => isTexLike(f.name)) || {}).name;
   if (!main) { toast('No .tex file found in that .zip.'); return; }
   const mainText = files.find(f => f.name === main).text;
-  await draftIfDirty();
-  setWorkspace({ title: baseOf(file.name) || 'Imported project', main, compiler: /\\usepackage(\[[^\]]*\])?\{fontspec\}|\\setmainfont/.test(mainText) ? 'xelatex' : 'pdflatex', active: main, files, pristine: false });
-  closeSheets(); Viewer.clear(); Issues.hide(); hideBanner(); setStatus('Not compiled yet');
-  toast(`Opened ${plural(files.length, 'file')}`); gcSoon();
+  const folders = [...new Set(files.map(f => dirOf(f.name)).filter(Boolean))];
+  const p = await Projects.add({ id: newPid(), title: baseOf(file.name).replace(/[-_]+/g, ' ') || 'Imported project', main, compiler: /\\usepackage(\[[^\]]*\])?\{fontspec\}|\\setmainfont/.test(mainText) ? 'xelatex' : 'pdflatex', active: main, files, folders, created: now, updated: now });
+  toast(`Opened ${plural(files.length, 'file')} as a new project`);
+  await openProject(p.id);
 }
 
 /* ---------- PDF viewer ---------- */
@@ -1232,10 +1642,7 @@ const Viewer = {
     if (old) setTimeout(() => old.destroy(), 0);
     return doc.numPages;
   },
-  fallback() {
-    this.doc = null; this.sizes = []; this.nodes = [];
-    this.wrap.replaceChildren(h('iframe', { src: this.url, title: 'PDF preview' }));
-  },
+  fallback() { this.doc = null; this.sizes = []; this.nodes = []; this.wrap.replaceChildren(h('iframe', { src: this.url, title: 'PDF preview' })); },
   clear(title, text) {
     this.gen++;
     for (const t of this.tasks.values()) { try { t.cancel(); } catch {} }
@@ -1278,24 +1685,66 @@ const Viewer = {
     const top = sc.scrollTop - 900, bot = sc.scrollTop + sc.clientHeight + 900, vis = new Set();
     for (let i = 0; i < this.nodes.length; i++) { const n = this.nodes[i], t = n.offsetTop; if (t >= bot) break; if (t + n.offsetHeight > top) vis.add(i); }
     for (const i of vis) this.render(i);
-    if (this.nodes.length > 12) this.nodes.forEach((nd, i) => { if (!vis.has(i) && nd.firstChild) { const c = nd.firstChild; c.width = c.height = 0; nd.replaceChildren(); delete nd.dataset.v; } });
+    if (this.nodes.length > 12) this.nodes.forEach((nd, i) => { if (!vis.has(i) && nd.firstChild) { const c = nd.querySelector('canvas'); if (c) c.width = c.height = 0; nd.replaceChildren(); delete nd.dataset.v; } });
   },
   async render(i) {
     const nd = this.nodes[i], s = this.sizes[i]; if (!nd || !s) return;
-    const key = this.key; if (nd.dataset.v === key || nd.dataset.p === key) return;
+    const key = this.key, scale = this.scale; if (nd.dataset.v === key || nd.dataset.p === key) return;
     nd.dataset.p = key;
     const prev = this.tasks.get(i); if (prev) { try { prev.cancel(); } catch {} }
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    let vp = s.page.getViewport({ scale: this.scale * dpr });
+    let vp = s.page.getViewport({ scale: scale * dpr });
     const px = vp.width * vp.height, maxPx = 14e6;
-    if (px > maxPx) vp = s.page.getViewport({ scale: this.scale * dpr * Math.sqrt(maxPx / px) });
+    if (px > maxPx) vp = s.page.getViewport({ scale: scale * dpr * Math.sqrt(maxPx / px) });
     const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
     const task = s.page.render({ canvasContext: c.getContext('2d', { alpha: false }), viewport: vp });
     this.tasks.set(i, task);
     try { await task.promise; } catch { if (nd.dataset.p === key) delete nd.dataset.p; return; }
     if (this.tasks.get(i) === task) this.tasks.delete(i);
     if (nd.dataset.p !== key) return;
-    delete nd.dataset.p; nd.replaceChildren(c); nd.dataset.v = key;
+    delete nd.dataset.p; nd.dataset.v = key;
+    const tl = h('div', { class: 'textLayer' });
+    tl.style.setProperty('--scale-factor', String(scale));
+    nd.replaceChildren(c, tl);
+    this.textLayer(s, tl, scale, key, nd).catch(() => {});
+    this.links(s, nd, scale, key).catch(() => {});
+  },
+  async textLayer(s, tl, scale, key, nd) {
+    const lib = window.pdfjsLib; if (!lib || !lib.renderTextLayer) return;
+    if (!s.tc) s.tc = s.page.getTextContent();
+    const tc = await s.tc; if (nd.dataset.v !== key) return;
+    await lib.renderTextLayer({ textContentSource: tc, container: tl, viewport: s.page.getViewport({ scale }), textDivs: [] }).promise;
+    const end = h('div', { class: 'endOfContent' }); tl.append(end);
+    tl.addEventListener('mousedown', e => {
+      if (e.target !== tl) { const b = tl.getBoundingClientRect(); end.style.top = (Math.max(0, (e.clientY - b.top) / b.height) * 100).toFixed(2) + '%'; }
+      end.classList.add('active');
+    });
+    tl.addEventListener('mouseup', () => { end.style.top = ''; end.classList.remove('active'); });
+  },
+  async links(s, nd, scale, key) {
+    if (!s.an) s.an = s.page.getAnnotations({ intent: 'display' });
+    const list = (await s.an).filter(a => a.subtype === 'Link' && (a.url || a.dest));
+    if (!list.length || nd.dataset.v !== key) return;
+    const vp = s.page.getViewport({ scale }), layer = h('div', { class: 'linkLayer' });
+    for (const a of list) {
+      const [x1, y1, x2, y2] = vp.convertToViewportRectangle(a.rect);
+      const el = a.url ? h('a', { href: a.url, target: '_blank', rel: 'noopener noreferrer', title: a.url }) : h('a', { href: '#', title: 'Go to this place in the PDF' });
+      el.style.cssText = `left:${Math.min(x1, x2)}px;top:${Math.min(y1, y2)}px;width:${Math.abs(x2 - x1)}px;height:${Math.abs(y2 - y1)}px`;
+      if (!a.url) el.addEventListener('click', e => { e.preventDefault(); this.goTo(a.dest); });
+      layer.append(el);
+    }
+    nd.append(layer);
+  },
+  async goTo(dest) {
+    try {
+      const explicit = typeof dest === 'string' ? await this.doc.getDestination(dest) : dest;
+      if (!Array.isArray(explicit)) return;
+      const ref = explicit[0], idx = typeof ref === 'object' ? await this.doc.getPageIndex(ref) : ref;
+      const nd = this.nodes[idx], s = this.sizes[idx]; if (!nd) return;
+      let y = 0;
+      if (explicit[1] && explicit[1].name === 'XYZ' && explicit[3] != null) y = s.page.getViewport({ scale: this.scale }).convertToViewportPoint(explicit[2] || 0, explicit[3])[1];
+      this.scroll.scrollTo({ top: nd.offsetTop + Math.max(0, y - 24), behavior: 'smooth' });
+    } catch {}
   },
   place() {
     const top = this.scroll.scrollTop;
@@ -1312,19 +1761,24 @@ const Viewer = {
     this.zoom = z; this.layout();
     const r = this.scale / old; sc.scrollLeft = cx * r - fx; sc.scrollTop = cy * r - fy;
   },
+  async thumb() {
+    try {
+      const s = this.sizes[0]; if (!s) return null;
+      const vp = s.page.getViewport({ scale: 360 / s.w });
+      const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      await s.page.render({ canvasContext: c.getContext('2d', { alpha: false }), viewport: vp }).promise;
+      return c.toDataURL('image/jpeg', 0.78);
+    } catch { return null; }
+  },
 };
-function setPdfActions(on) {
-  for (const id of ['pdfOpen', 'pdfSave', 'pdfShare', 'zoomIn', 'zoomOut', 'zoomLbl']) $('#' + id).disabled = !on;
-}
-function pdfName() { return slug(viewing ? viewing.title : ws.title) + '.pdf'; }
+function setPdfActions(on) { for (const id of ['pdfOpen', 'pdfSave', 'pdfShare', 'zoomIn', 'zoomOut', 'zoomLbl']) $('#' + id).disabled = !on; }
+function pdfName() { return slug(viewing ? viewing.title : ws ? ws.title : 'document') + '.pdf'; }
 function saveBlob(blob, name) {
   const u = URL.createObjectURL(blob);
   const a = h('a', { href: u, download: name, style: 'display:none' }); document.body.append(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 4000);
 }
 const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(1)], 'x.pdf', { type: 'application/pdf' })] })); } catch { return false; } })();
-
-/* pinch + ctrl-wheel zoom */
 (() => {
   const sc = Viewer.scroll, pages = Viewer.wrap; let pinch = null;
   const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
@@ -1356,34 +1810,33 @@ const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.c
   new ResizeObserver(() => { const w = sc.clientWidth; if (w === lastW) return; lastW = w; clearTimeout(rw); rw = setTimeout(() => Viewer.layout(), 120); }).observe(sc);
 })();
 
-/* ---------- history ---------- */
+/* ---------- history (per project) ---------- */
 let viewing = null;
 const History = {
   list: [], loaded: false,
   async load() { try { this.list = (await Store.all('history')) || []; } catch { this.list = []; } this.list.sort((a, b) => b.at - a.at); this.loaded = true; },
+  of(pid) { return this.list.filter(e => e.projectId === pid); },
   async add(entry, pdf) {
-    if (!this.loaded) await this.load();
-    const prev = this.list[0];
-    if (prev && prev.sig === entry.sig && prev.ok === entry.ok && !!prev.draft === !!entry.draft) { this.list.shift(); await Store.del('history', prev.id); await Store.del('pdfs', prev.id); }
+    const prev = this.of(entry.projectId)[0];
+    if (prev && prev.sig === entry.sig && prev.ok === entry.ok && !!prev.draft === !!entry.draft) { this.list = this.list.filter(e => e !== prev); await Store.del('history', prev.id); await Store.del('pdfs', prev.id); }
     this.list.unshift(entry);
     try { await Store.put('history', entry); if (pdf) await Store.put('pdfs', pdf, entry.id); }
     catch { toast('History couldn’t be saved: this device’s storage is full or blocked.'); }
     for (const f of entry.files || []) pinned.delete(f.ref);
-    await this.prune();
+    await this.prune(entry.projectId);
     if (!$('#sheetHistory').hidden) renderHistory();
   },
-  async remove(id) { this.list = this.list.filter(e => e.id !== id); await Store.del('history', id); await Store.del('pdfs', id); await gcBlobs(); },
-  async prune() {
-    let dropped = false;
-    for (let i = 0; i < this.list.length; i++) {
-      const e = this.list[i];
-      if (i >= KEEP_ENTRIES) { await Store.del('history', e.id); await Store.del('pdfs', e.id); dropped = true; }
+  async remove(id) { this.list = this.list.filter(e => e.id !== id); await Store.del('history', id); await Store.del('pdfs', id); gcSoon(); },
+  async prune(pid) {
+    const mine = this.of(pid); let dropped = false;
+    for (let i = 0; i < mine.length; i++) {
+      const e = mine[i];
+      if (i >= KEEP_ENTRIES) { this.list = this.list.filter(x => x !== e); await Store.del('history', e.id); await Store.del('pdfs', e.id); dropped = true; }
       else if (i >= KEEP_PDFS && e.hasPdf) { e.hasPdf = false; await Store.put('history', e); await Store.del('pdfs', e.id); }
     }
-    if (this.list.length > KEEP_ENTRIES) this.list.length = KEEP_ENTRIES;
-    if (dropped) await gcBlobs();
+    if (dropped) gcSoon();
   },
-  async clear() { this.list = []; await Store.clear('history'); await Store.clear('pdfs'); await gcBlobs(); },
+  async clearProject(pid) { for (const e of this.of(pid)) { await Store.del('history', e.id); await Store.del('pdfs', e.id); } this.list = this.list.filter(e => e.projectId !== pid); gcSoon(); },
   pdf: id => Store.get('pdfs', id),
 };
 let gcT = 0;
@@ -1392,30 +1845,28 @@ async function gcBlobs() {
   if (compiling) { gcSoon(); return; }
   try {
     const keep = new Set(pinned);
-    for (const f of ws.files) if (f.kind === 'bin') keep.add(f.hash);
+    for (const p of Projects.list) for (const f of p.files) if (f.kind === 'bin') keep.add(f.hash);
     for (const e of History.list) for (const f of e.files || []) keep.add(f.ref);
     for (const k of await Store.keys('blobs')) if (!keep.has(k)) { await Store.del('blobs', k); bin.delete(k); }
   } catch (e) { console.warn('cleanup failed', e); }
 }
 async function draftIfDirty() {
   if (!ws || ws.pristine) return;
-  const sig = sigOf();
-  if (sig === lastCompiledSig || (History.list[0] && History.list[0].sig === sig)) return;
-  await History.add({ id: newId(), at: Date.now(), title: ws.title, compiler: ws.compiler, main: ws.main, sig, files: await snapshotFiles(), ok: null, draft: true, hasPdf: false }, null);
+  const sig = sigOf(), latest = History.of(ws.id)[0];
+  if (sig === ws.lastSig || (latest && latest.sig === sig)) return;
+  await History.add({ id: newId(), projectId: ws.id, at: Date.now(), title: ws.title, compiler: ws.compiler, main: ws.main, sig, files: await snapshotFiles(), ok: null, draft: true, hasPdf: false }, null);
 }
-
 let usageBytes = null;
-async function refreshUsage() {
-  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); usageBytes = e.usage; } } catch {}
-}
+async function refreshUsage() { try { if (navigator.storage && navigator.storage.estimate) usageBytes = (await navigator.storage.estimate()).usage; } catch {} }
 function renderHistory() {
+  if (!ws) return;
   const q = $('#histSearch').value.trim().toLowerCase();
   const box = $('#histList'); box.replaceChildren();
-  const n = History.list.length;
-  $('#histMeta').textContent = n ? `${plural(n, 'version')} saved on this device${usageBytes ? ' · ' + fmtSize(usageBytes) + ' used' : ''}. PDFs are kept for the latest ${KEEP_PDFS}.` : '';
+  const mine = History.of(ws.id), n = mine.length;
+  $('#histMeta').textContent = n ? `${plural(n, 'saved version')} of this project. PDFs are kept for the latest ${KEEP_PDFS}.` : '';
   $('#histClear').disabled = !n;
-  const items = History.list.filter(e => !q || (e.title || '').toLowerCase().includes(q));
-  if (!items.length) { box.append(h('p', { class: 'empty-note' }, n ? 'No versions match that name.' : 'Every compile is saved here with its files and PDF, so you can go back to any version. Nothing yet.')); return; }
+  const items = mine.filter(e => !q || (e.title || '').toLowerCase().includes(q) || dayLabel(e.at).toLowerCase().includes(q));
+  if (!items.length) { box.append(h('p', { class: 'empty-note' }, n ? 'No versions match.' : 'Every compile of this project is saved here with its files and PDF, so you can go back to any version. Nothing yet.')); return; }
   let day = '';
   for (const e of items) {
     const d = dayLabel(e.at); if (d !== day) { day = d; box.append(h('h4', { class: 'day' }, d)); }
@@ -1436,7 +1887,7 @@ async function viewEntry(e) {
   let shown = false;
   if (e.hasPdf) { const pdf = await History.pdf(e.id); if (pdf && viewing === e) { const pages = await Viewer.show(pdf); $('#pdfInfo').textContent = pages ? plural(pages, 'page') : ''; shown = true; } }
   if (!shown && viewing === e) {
-    if (e.draft) Viewer.clear('Saved copy of your files', 'Saved when you switched documents. Restore it to keep working on it.');
+    if (e.draft) Viewer.clear('Saved copy of your files', 'Saved before you restored another version. Restore it to keep working on it.');
     else if (e.ok) Viewer.clear('PDF not kept', 'Only the latest ' + KEEP_PDFS + ' PDFs are stored. Restore these files and compile to rebuild it.');
     else Viewer.clear('This compile failed', 'The problems are listed below. Restore these files to fix them.');
   }
@@ -1445,8 +1896,9 @@ async function viewEntry(e) {
 function hideBanner() { viewing = null; $('#banner').hidden = true; }
 async function backToLatest() {
   hideBanner(); Issues.hide();
-  const latest = History.list.find(e => e.hasPdf);
-  if (latest) { const pdf = await History.pdf(latest.id); if (pdf) { const p = await Viewer.show(pdf); $('#pdfInfo').textContent = p ? plural(p, 'page') : ''; return; } }
+  if (!ws) return;
+  const latest = History.of(ws.id).find(e => e.hasPdf);
+  if (latest) { const pdf = await History.pdf(latest.id); if (pdf) { const p = await Viewer.show(pdf); $('#pdfInfo').textContent = p ? `${plural(p, 'page')} · ${fmtSize(pdf.byteLength)}` : ''; return; } }
   Viewer.clear();
 }
 async function restoreEntry(e) {
@@ -1454,13 +1906,17 @@ async function restoreEntry(e) {
   await draftIfDirty();
   const files = [];
   for (const f of e.files) {
-    if (f.kind === 'text') { const b = await Store.get('blobs', f.ref); files.push({ name: f.name, kind: 'text', text: b && typeof b.text === 'string' ? b.text : '' }); }
-    else files.push({ name: f.name, kind: 'bin', hash: f.ref, type: f.type, size: f.size });
+    if (f.kind === 'text') { const b = await Store.get('blobs', f.ref); files.push({ name: f.name, kind: 'text', text: b && typeof b.text === 'string' ? b.text : '', added: Date.now() }); }
+    else files.push({ name: f.name, kind: 'bin', hash: f.ref, type: f.type, size: f.size, added: Date.now() });
   }
-  setWorkspace({ title: e.title, main: e.main, compiler: e.compiler, active: e.main, files, pristine: false });
-  if (e.ok) { lastCompiledSig = e.sig; setStatus('Restored version from ' + whenLabel(e.at), 'ok'); } else setStatus('Restored · not compiled');
+  Editor.reset();
+  Object.assign(ws, { title: e.title, main: e.main, compiler: e.compiler, active: e.main, files, pristine: false, updated: Date.now() });
+  files.forEach(f => ensureFolder(dirOf(f.name)));
+  ws.lastSig = e.ok ? e.sig : null;
+  loadProjectIntoEditor();
+  setStatus(e.ok ? 'Restored version from ' + whenLabel(e.at) : 'Restored · not compiled', e.ok ? 'ok' : '');
   $('#banner').hidden = true; viewing = null;
-  toast('Files restored'); setView('code');
+  scheduleSave(); toast('Files restored'); setView('code');
 }
 
 /* ---------- compile ---------- */
@@ -1470,11 +1926,10 @@ function setStatus(text, tone = '') { baseStatus = { text, tone }; refreshStatus
 function refreshStatus() {
   let { text, tone } = baseStatus;
   if (compiling) { text = 'Compiling…'; tone = 'busy'; }
-  else if (ws && lastCompiledSig && tone === 'ok' && sigOf() !== lastCompiledSig) { text = 'Edited since last compile'; tone = 'edit'; }
+  else if (ws && ws.lastSig && tone === 'ok' && sigOf() !== ws.lastSig) { text = 'Edited since last compile'; tone = 'edit'; }
   for (const s of $$('[data-status]')) { s.textContent = text; s.dataset.tone = tone; }
 }
 let rsT = 0; function refreshStatusSoon() { clearTimeout(rsT); rsT = setTimeout(refreshStatus, 300); }
-
 function setCompilingUI(on) {
   const b = $('#btnCompile');
   b.classList.toggle('busy', on);
@@ -1484,14 +1939,13 @@ function setCompilingUI(on) {
   if (!on) $('.cl', b).textContent = 'Compile';
   refreshStatus();
 }
-
 async function compile() {
   if (compiling) { compiling.user = true; compiling.ctrl.abort(); return; }
   if (!ws) return;
   Editor.flush();
   const main = fileByName(ws.main);
-  if (!main || main.kind !== 'text') { toast('Choose a main .tex file first.'); openSheet('sheetFiles'); return; }
-  const ctrl = new AbortController(), t0 = performance.now();
+  if (!main || main.kind !== 'text') { toast('Choose a main .tex file first (Files → ⋯ → Make main file).'); openSheet('sheetFiles'); return; }
+  const project = ws, ctrl = new AbortController(), t0 = performance.now();
   const job = compiling = { ctrl, t0, user: false, timeout: false };
   setCompilingUI(true);
   const tick = setInterval(() => { $('#btnCompile .cl').textContent = secs(performance.now() - t0); }, 100);
@@ -1500,13 +1954,13 @@ async function compile() {
   try {
     snap = await snapshotFiles();
     const resources = [];
-    for (const f of ws.files) {
-      if (f.name === ws.main) resources.push({ main: true, path: f.name, content: f.text });
+    for (const f of project.files) {
+      if (f.name === project.main) resources.push({ main: true, path: f.name, content: f.text });
       else if (f.kind === 'text') resources.push({ path: f.name, content: f.text });
       else { const b = await getBin(f.hash); if (b) resources.push({ path: f.name, file: await b64(b.buf) }); }
     }
     const body = JSON.stringify({
-      compiler: ws.compiler, resources,
+      compiler: project.compiler, resources,
       options: { compiler: { bibliography: !!settings.bib, halt_on_error: !!settings.stopOnError, force: !settings.stopOnError }, response: { log_files_on_failure: true } },
     });
     const res = await fetch(serverUrl() + '/builds/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ctrl.signal });
@@ -1518,39 +1972,49 @@ async function compile() {
   } finally { clearInterval(tick); clearTimeout(to); }
   const ms = Math.round(performance.now() - t0);
   compiling = null; setCompilingUI(false);
-  await handleResult(r, { sig, snap, ms });
+  await handleResult(r, { sig, snap, ms, project });
 }
-
-async function handleResult(r, { sig, snap, ms }) {
+async function handleResult(r, { sig, snap, ms, project }) {
   if (r.net || !r.ok && !(r.data && /COMPILATION_/.test(r.data.error || ''))) pinned.clear();
+  const here = ws === project;
   if (r.net) {
+    if (!here) return;
     if (r.user) { setStatus('Compile cancelled'); return; }
-    if (r.timeout) { Issues.show([], '', 'No answer from the compile server after 3 minutes. Try again, or check the server address in settings.'); setStatus('No answer from server', 'bad'); return; }
-    Issues.show([], '', navigator.onLine === false ? 'You’re offline. Connect to the internet and compile again. Your work is saved on this device.' : `Couldn’t reach the compile server (${serverUrl().replace(/^https?:\/\//, '')}). Try again in a moment, or check the address in settings.`);
+    if (r.timeout) { Issues.show([], '', 'No answer from the compile server after 3 minutes. Try again, or check the server address in Settings.'); setStatus('No answer from server', 'bad'); return; }
+    Issues.show([], '', navigator.onLine === false ? 'You’re offline. Connect to the internet and compile again. Your work is saved on this device.' : `Couldn’t reach the compile server (${serverUrl().replace(/^https?:\/\//, '')}). Try again in a moment, or check the address in Settings.`);
     setStatus('Not compiled', 'bad'); return;
   }
-  const entry = { id: newId(), at: Date.now(), title: ws.title, compiler: ws.compiler, main: ws.main, ms, sig, files: snap || [] };
+  const entry = { id: newId(), projectId: project.id, at: Date.now(), title: project.title, compiler: project.compiler, main: project.main, ms, sig, files: snap || [] };
   if (r.ok) {
-    lastCompiledSig = sig; hideBanner(); Issues.hide(); setView('pdf');
-    const pages = await Viewer.show(r.pdf, { keepPlace: true });
-    $('#pdfInfo').textContent = pages ? `${plural(pages, 'page')} · ${fmtSize(r.pdf.byteLength)}` : fmtSize(r.pdf.byteLength);
-    setStatus(`Compiled in ${secs(ms)}${pages ? ' · ' + plural(pages, 'page') : ''}`, 'ok');
+    project.lastSig = sig; project.updated = Date.now();
+    let pages = null;
+    if (here) {
+      hideBanner(); Issues.hide(); setView('pdf');
+      pages = await Viewer.show(r.pdf, { keepPlace: true });
+      $('#pdfInfo').textContent = pages ? `${plural(pages, 'page')} · ${fmtSize(r.pdf.byteLength)}` : fmtSize(r.pdf.byteLength);
+      setStatus(`Compiled in ${secs(ms)}${pages ? ' · ' + plural(pages, 'page') : ''}`, 'ok');
+      Viewer.thumb().then(t => { if (t) { project.thumb = t; Projects.save(project); } });
+    }
+    project.status = { ok: true, at: entry.at, pages, ms };
     await History.add({ ...entry, ok: true, pages, size: r.pdf.byteLength, hasPdf: true }, r.pdf);
-    saveWorkspace(); requestPersist();
+    await Projects.save(project); requestPersist();
     return;
   }
   const d = r.data || {};
   if (d.error === 'COMPILATION_ERROR' || d.error === 'COMPILATION_TIMEOUT') {
-    const log = pickLog(d), problems = parseLog(log);
-    const head = d.error === 'COMPILATION_TIMEOUT' ? 'The server stopped this compile after its time limit (about 100 s). Large images or loops in the document are the usual cause.' : null;
-    Issues.show(problems, log, head);
-    setStatus(problems.length ? `Failed · ${plural(problems.length, 'error')}` : 'Failed', 'bad');
+    const log = pickLog(d), problems = parseLog(log, project);
+    project.status = { ok: false, at: entry.at, errors: problems.length };
+    if (here) {
+      Issues.show(problems, log, d.error === 'COMPILATION_TIMEOUT' ? 'The server stopped this compile after its time limit (about 100 s). Large images or loops in the document are the usual cause.' : null);
+      setStatus(problems.length ? `Failed · ${plural(problems.length, 'error')}` : 'Failed', 'bad');
+    }
     await History.add({ ...entry, ok: false, errors: problems.length, log: log.slice(-300000), hasPdf: false }, null);
-  } else {
+    await Projects.save(project);
+  } else if (here) {
     Issues.show([], (r.raw || '').slice(0, 20000), describeApiError(r));
     setStatus('Failed', 'bad');
   }
-  setView('code');
+  if (here) setView('code');
 }
 function describeApiError(r) {
   const d = r.data || {}, raw = String(r.raw || '');
@@ -1569,7 +2033,7 @@ function pickLog(d) {
 }
 function hintFor(msg) {
   let m;
-  if ((m = msg.match(/File [`'‘]([^'’]+)['’] not found/))) return /\.(sty|cls)$/.test(m[1]) ? 'This package isn’t installed on the compile server, or its name is misspelled.' : 'Check the file is in Files and the name matches exactly, including capitals.';
+  if ((m = msg.match(/File [`'‘]([^'’]+)['’] not found/))) return /\.(sty|cls)$/.test(m[1]) ? 'This package isn’t installed on the compile server, or its name is misspelled.' : 'Check the file is in Files and the path matches exactly, including the folder and capitals.';
   if (/Undefined control sequence/.test(msg)) return 'A command is misspelled, or the package that defines it isn’t loaded.';
   if (/Missing \$ inserted/.test(msg)) return 'Maths like ^, _ or \\alpha must sit inside $…$.';
   if (/Missing \\begin\{document\}/.test(msg)) return 'Something is written before \\begin{document}.';
@@ -1582,7 +2046,7 @@ function hintFor(msg) {
   if (/Emergency stop/.test(msg)) return 'LaTeX stopped early. Fix the first problem in this list.';
   return '';
 }
-function parseLog(log) {
+function parseLog(log, project = ws) {
   const out = [], seen = new Set();
   const lines = String(log || '').split(/\r?\n/);
   const re = /^(?:\.\/)?([^\s:()"]+\.(?:tex|ltx|sty|cls|bib|bbl|def|cfg|clo|dtx)):(\d+): (.*)$/;
@@ -1590,7 +2054,7 @@ function parseLog(log) {
     const m = lines[i].match(re); if (!m) continue;
     let ctx = '';
     for (let j = i + 1; j < Math.min(lines.length, i + 10); j++) { const lm = lines[j].match(/^l\.(\d+)\s?(.*)$/); if (lm) { ctx = lm[2] + ((lines[j + 1] || '').trim() ? ' ' + lines[j + 1].trim() : ''); break; } }
-    const file = m[1] === '__main_document__.tex' ? (ws ? ws.main : 'main.tex') : m[1];
+    const file = m[1] === '__main_document__.tex' ? (project ? project.main : 'main.tex') : m[1];
     const key = file + ':' + m[2] + ':' + m[3]; if (seen.has(key)) continue; seen.add(key);
     out.push({ file, line: +m[2], msg: m[3].trim(), ctx: ctx.trim(), hint: hintFor(m[3]) });
   }
@@ -1627,7 +2091,7 @@ const Issues = {
 };
 function jumpTo(p) {
   if (!p.line || viewing) { if (viewing) toast('Restore this version to edit it.'); return; }
-  let f = fileByName(p.file) || ws.files.find(x => x.name.split('/').pop() === p.file.split('/').pop() && x.kind === 'text');
+  const f = fileByName(p.file) || ws.files.find(x => baseName(x.name) === baseName(p.file) && x.kind === 'text');
   if (!f || f.kind !== 'text') { toast(`${p.file} isn’t one of your files (it comes from a package).`); return; }
   setView('code'); Editor.open(f.name); setTimeout(() => Editor.jump(p.line), 30);
 }
@@ -1637,7 +2101,129 @@ async function requestPersist() {
   try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch {}
 }
 
-/* ---------- views, sheets, dialogs ---------- */
+/* ---------- screens ---------- */
+function loadProjectIntoEditor() {
+  Editor.reset();
+  const act = fileByName(ws.active);
+  const first = act && act.kind === 'text' ? act.name : fileByName(ws.main) ? ws.main : (ws.files.find(f => f.kind === 'text') || {}).name;
+  Editor.open(first || null);
+  $('#docTitle').value = ws.title || 'Untitled';
+  $('#compiler').value = ws.compiler;
+  renderFileStrip(); renderFiles(); refreshStatus();
+}
+async function openProject(id) {
+  const p = Projects.get(id); if (!p) { await showHome(); return; }
+  if (ws && ws !== p) await saveWorkspace();
+  closeSheets(); closeMenu();
+  ws = p; fileSel = null;
+  document.body.dataset.screen = 'editor';
+  try { sessionStorage.setItem('galley.open', id); } catch {}
+  hideBanner(); Issues.hide(); setView('code');
+  loadProjectIntoEditor();
+  const st = p.status;
+  if (st && st.ok) setStatus(`Last compiled ${whenLabel(st.at)}`, p.lastSig ? 'ok' : '');
+  else if (st) setStatus('Last compile failed', 'bad');
+  else setStatus('Not compiled yet');
+  Viewer.clear();
+  const latest = History.of(p.id).find(e => e.hasPdf);
+  if (latest) {
+    const pdf = await History.pdf(latest.id);
+    if (pdf && ws === p) { const pages = await Viewer.show(pdf); $('#pdfInfo').textContent = pages ? `${plural(pages, 'page')} · ${fmtSize(pdf.byteLength)}` : ''; if (pages && !p.thumb) Viewer.thumb().then(t => { if (t) { p.thumb = t; Projects.save(p); } }); }
+  }
+  if (Editor.cm) setTimeout(() => Editor.cm.refresh(), 0);
+}
+async function showHome() {
+  if (ws) await saveWorkspace();
+  ws = null; fileSel = null; viewing = null;
+  closeSheets(); closeMenu(); Issues.hide(); hideBanner(); Viewer.clear(); Editor.reset(); renderFileStrip();
+  document.body.dataset.screen = 'home';
+  try { sessionStorage.removeItem('galley.open'); } catch {}
+  renderHome();
+}
+function projectMeta(p) {
+  const st = p.status;
+  let dot = '', txt = 'Not compiled yet';
+  if (st && st.ok) { dot = 'ok'; txt = st.pages ? plural(st.pages, 'page') : 'Compiled'; }
+  else if (st) { dot = 'bad'; txt = 'Last compile failed'; }
+  return { dot, text: `${txt} · edited ${ago(p.updated)}` };
+}
+function renderHome() {
+  const q = $('#projSearch').value.trim().toLowerCase();
+  const grid = $('#projGrid'); grid.replaceChildren();
+  const all = Projects.sorted(), list = all.filter(p => !q || p.title.toLowerCase().includes(q));
+  $('#homeSub').textContent = all.length ? `${plural(all.length, 'project')} · saved in this browser on this device` : 'Saved in this browser on this device';
+  if (!all.length) {
+    grid.append(h('div', { class: 'home-empty', style: 'grid-column:1/-1' }, h('h2', null, 'No projects yet'), h('p', { class: 'note' }, 'Start a new one, or open a .zip from Overleaf or another computer.'),
+      h('button', { class: 'btn primary', type: 'button', onclick: () => openNewProject() }, 'New project')));
+    return;
+  }
+  if (!list.length) { grid.append(h('p', { class: 'empty-note', style: 'grid-column:1/-1' }, 'No projects match that name.')); return; }
+  for (const p of list) {
+    const meta = projectMeta(p);
+    const paper = h('span', { class: 'pc-paper' });
+    if (p.thumb) paper.append(h('img', { src: p.thumb, alt: '' }));
+    else paper.append(h('span', { class: 'pc-ghost' }, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')));
+    const card = h('article', { class: 'pcard' },
+      h('button', { class: 'pc-main', type: 'button', 'aria-label': `Open ${p.title}`, onclick: () => openProject(p.id) },
+        h('span', { class: 'pc-thumb' }, paper),
+        h('span', { class: 'pc-body' }, h('span', { class: 'pc-title' }, p.title), h('span', { class: 'pc-meta' }, h('i', { class: 'dot ' + meta.dot }), h('span', null, meta.text)))),
+    );
+    card.append(h('button', { class: 'btn icon sm pc-more', type: 'button', 'aria-label': `Options for ${p.title}`, html: icon('more'), onclick: e => projectMenu(e.currentTarget, p) }));
+    grid.append(card);
+  }
+  if (list.some(p => !p.thumb && p.status && p.status.ok)) idle(fillThumbs);
+}
+let thumbBusy = false;
+async function fillThumbs() {
+  if (thumbBusy) return; thumbBusy = true;
+  try {
+    let lib; try { lib = await loadPdfJs(); } catch { return; }
+    for (const p of Projects.sorted()) {
+      if (p.thumb || ws) continue;
+      const e = History.of(p.id).find(x => x.hasPdf); if (!e) continue;
+      const buf = await History.pdf(e.id); if (!buf) continue;
+      try {
+        const doc = await lib.getDocument({ data: new Uint8Array(buf.slice(0)), isEvalSupported: false }).promise;
+        const page = await doc.getPage(1), v1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 360 / v1.width });
+        const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        await page.render({ canvasContext: c.getContext('2d', { alpha: false }), viewport: vp }).promise;
+        p.thumb = c.toDataURL('image/jpeg', 0.78); doc.destroy(); await Projects.save(p);
+        if (!ws) renderHome();
+      } catch {}
+    }
+  } finally { thumbBusy = false; }
+}
+function projectMenu(anchor, p) {
+  openMenu(anchor, [
+    { label: 'Open', icon: 'open', act: () => openProject(p.id) },
+    { label: 'Rename…', icon: 'pencil', act: async () => { const v = await promptBox('Rename project', p.title, 'Rename'); if (v && v.trim()) { p.title = v.trim(); p.updated = Date.now(); await Projects.save(p); renderHome(); } } },
+    { label: 'Duplicate', icon: 'copy', act: async () => {
+      const now = Date.now(), copy = JSON.parse(JSON.stringify({ ...p, thumb: null }));
+      const c = await Projects.add({ ...copy, thumb: p.thumb, id: newPid(), title: p.title + ' (copy)', created: now, updated: now, status: null, lastSig: null });
+      renderHome(); toast(`Duplicated as “${c.title}”`);
+    } },
+    { label: 'Download .zip', icon: 'download', act: () => exportZip(p) },
+    '-',
+    { label: 'Delete project', icon: 'trash', danger: true, act: async () => {
+      const n = History.of(p.id).length;
+      if (!await ask(`Delete “${p.title}”?`, `Its files${n ? ` and ${plural(n, 'saved version')}` : ''} are removed from this device. This can’t be undone. Download a .zip first if you might need it.`, 'Delete', true)) return;
+      Projects.list = Projects.list.filter(x => x !== p); await Store.del('projects', p.id); await History.clearProject(p.id);
+      renderHome(); toast(`Deleted “${p.title}”`);
+    } },
+  ]);
+}
+function openNewProject() {
+  openSheet('sheetNew');
+  const box = $('#tpls'); box.replaceChildren();
+  for (const [key, t] of Object.entries(TEMPLATES)) box.append(h('button', { class: 'tpl', type: 'button', onclick: async () => {
+    const name = $('#newName').value.trim();
+    const p = await createProject(key, name); closeSheets(); await openProject(p.id); toast(`Created “${p.title}”`);
+  } }, h('b', null, t.label), h('span', null, t.desc)));
+  $('#newName').value = '';
+  if (!coarse()) setTimeout(() => $('#newName').focus(), 60);
+}
+
+/* ---------- views, sheets ---------- */
 function setView(v) {
   $('#app').dataset.view = v;
   $('#tabCode').setAttribute('aria-selected', String(v === 'code'));
@@ -1647,56 +2233,37 @@ function setView(v) {
 }
 let lastFocus = null;
 function openSheet(id) {
-  closeSheets(true);
+  closeSheets(true); closeMenu();
   lastFocus = document.activeElement;
   const s = $('#' + id); s.hidden = false; $('#scrim').hidden = false;
   requestAnimationFrame(() => requestAnimationFrame(() => s.classList.add('open')));
   if (id === 'sheetFiles') renderFiles();
-  if (id === 'sheetHistory') { renderHistory(); refreshUsage().then(() => { if (!s.hidden) renderHistory(); }); }
-  if (id === 'sheetMore') renderMore();
-  setTimeout(() => { const c = s.querySelector('[data-close]'); if (c && !matchMedia('(pointer:coarse)').matches) c.focus(); }, 30);
+  if (id === 'sheetHistory') renderHistory();
+  if (id === 'sheetSettings') renderSettings();
+  setTimeout(() => { const c = s.querySelector('[data-close]'); if (c && !coarse() && id !== 'sheetNew') c.focus(); }, 30);
 }
 function closeSheets(silent) {
   let was = false;
   for (const s of $$('.sheet')) { if (!s.hidden) was = true; s.classList.remove('open'); s.hidden = true; }
   $('#scrim').hidden = true; $('#newFileForm').hidden = true;
+  fileSel = null;
   if (was && !silent && lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll: true }); } catch {}
 }
-let askResolve = null;
-function ask(title, text, okLabel = 'OK') {
-  if (askResolve) askResolve(false);
-  $('#askTitle').textContent = title; $('#askText').textContent = text || ''; $('#askYes').textContent = okLabel;
-  $('#ask').hidden = false; setTimeout(() => $('#askYes').focus(), 20);
-  return new Promise(res => { askResolve = res; });
-}
-function answer(v) { $('#ask').hidden = true; const r = askResolve; askResolve = null; if (r) r(v); }
-let toastT = 0;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2800); }
-
-function renderMore() {
-  const box = $('#tpls'); box.replaceChildren();
-  for (const [key, t] of Object.entries(TEMPLATES)) box.append(h('button', { class: 'tpl', type: 'button', onclick: () => newDocument(key) }, h('b', null, t.label), h('span', null, t.desc)));
+function renderSettings() {
   $('#setServer').value = settings.server || DEFAULT_SERVER;
   $('#setBib').checked = !!settings.bib; $('#setStop').checked = !!settings.stopOnError;
   for (const b of $$('#themeSeg button')) b.setAttribute('aria-pressed', String(b.dataset.themeSet === (settings.theme || 'auto')));
   const info = $('#storageInfo'), pb = $('#btnPersist');
-  info.textContent = Store.persistent ? 'History and files are saved in this browser on this device.' : 'This browser mode can’t save anything (private browsing). Files are lost when you close the tab.';
+  info.textContent = Store.persistent ? 'Projects and history are saved in this browser on this device.' : 'This browser mode can’t save anything (private browsing). Work is lost when you close the tab.';
   (async () => {
     try {
       await refreshUsage();
       const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
-      if (Store.persistent && usageBytes != null) info.textContent = `History and files are saved in this browser on this device · ${fmtSize(usageBytes)} used.`;
+      if (Store.persistent && usageBytes != null) info.textContent = `Projects and history are saved in this browser on this device · ${fmtSize(usageBytes)} used.`;
       pb.hidden = !(navigator.storage && navigator.storage.persist);
-      pb.disabled = persisted; pb.textContent = persisted ? 'History is protected from clean-up' : 'Protect history from automatic clean-up';
+      pb.disabled = persisted; pb.textContent = persisted ? 'Projects are protected from clean-up' : 'Protect my projects from automatic clean-up';
     } catch { pb.hidden = true; }
   })();
-}
-async function newDocument(key) {
-  closeSheets();
-  await draftIfDirty();
-  setWorkspace(await buildTemplate(key));
-  hideBanner(); Issues.hide(); Viewer.clear(); setStatus('Not compiled yet'); setView('code');
-  toast('New document: ' + TEMPLATES[key].label); gcSoon();
 }
 function applyTheme() {
   const t = settings.theme;
@@ -1748,24 +2315,50 @@ function wire() {
   $('#pdfShare').hidden = !canShareFiles;
   setPdfActions(false);
 
+  /* home */
+  $('#homeNew').addEventListener('click', openNewProject);
+  $('#homeZip').addEventListener('click', () => $('#pickZip').click());
+  $('#homeSettings').addEventListener('click', () => openSheet('sheetSettings'));
+  $('#projSearch').addEventListener('input', renderHome);
+
+  /* editor header */
+  $('#btnProjects').addEventListener('click', showHome);
   $('#btnCompile').addEventListener('click', compile);
   $('#btnFiles').addEventListener('click', () => openSheet('sheetFiles'));
   $('#btnHistory').addEventListener('click', () => openSheet('sheetHistory'));
-  $('#btnMore').addEventListener('click', () => openSheet('sheetMore'));
+  $('#btnSettings').addEventListener('click', () => openSheet('sheetSettings'));
   $('#scrim').addEventListener('click', () => closeSheets());
   for (const b of $$('[data-close]')) b.addEventListener('click', () => closeSheets());
   for (const b of $$('.subbar [data-to]')) b.addEventListener('click', () => setView(b.dataset.to));
-
   const title = $('#docTitle');
-  title.addEventListener('input', () => { ws.title = title.value; scheduleSave(); });
-  title.addEventListener('change', () => { if (!title.value.trim()) { title.value = 'Untitled'; ws.title = 'Untitled'; } touch(); });
+  title.addEventListener('input', () => { if (!ws) return; ws.title = title.value; ws.updated = Date.now(); scheduleSave(); });
+  title.addEventListener('change', () => { if (!ws) return; if (!title.value.trim()) { title.value = 'Untitled'; ws.title = 'Untitled'; } touch(); });
   title.addEventListener('keydown', e => { if (e.key === 'Enter') title.blur(); });
-  $('#compiler').addEventListener('change', e => { ws.compiler = e.target.value; touch(); });
+  $('#compiler').addEventListener('change', e => { if (!ws) return; ws.compiler = e.target.value; touch(); });
 
-  $('#btnUpload').addEventListener('click', () => $('#pickAny').click());
-  $('#btnZipIn').addEventListener('click', () => $('#pickZip').click());
-  $('#btnZipOut').addEventListener('click', exportZip);
-  $('#pickAny').addEventListener('change', e => { const f = e.target.files; addFiles(f).finally(() => { e.target.value = ''; }); });
+  /* files */
+  $('#btnUpload').addEventListener('click', () => { pendingDest = undefined; $('#pickAny').click(); });
+  $('#btnFilesMore').addEventListener('click', e => openMenu(e.currentTarget, [
+    { label: 'Select several files', icon: 'check', act: () => { fileSel = new Set(); renderFiles(); } },
+    { label: 'Download project as .zip', icon: 'download', act: () => exportZip() },
+  ]));
+  $('#btnSelect').addEventListener('click', () => { fileSel = fileSel ? null : new Set(); renderFiles(); });
+  $('#selDone').addEventListener('click', () => { fileSel = null; renderFiles(); });
+  $('#selMove').addEventListener('click', async () => {
+    if (!fileSel || !fileSel.size) return;
+    const names = [...fileSel].filter(n => n !== ws.main);
+    if (!names.length) { toast('The main file has to stay at the top level.'); return; }
+    const d = await pickFolder(`Move ${plural(names.length, 'file')} to`); if (d == null) return;
+    fileSel = null; moveFiles(names, d);
+  });
+  $('#selDelete').addEventListener('click', async () => { if (!fileSel || !fileSel.size) return; await deleteFiles([...fileSel]); });
+  $('#fileSort').addEventListener('change', e => { ws.fileSort = e.target.value; scheduleSave(); renderFiles(); });
+  $('#btnNewFolder').addEventListener('click', async () => {
+    const n = sanitizeFolder(await promptBox('New folder', '', 'Create', 'For example figures, chapters or data.'));
+    if (!n) return; if (allFolders().includes(n)) { toast(`${n} already exists.`); return; }
+    ensureFolder(n); touch(); renderFiles();
+  });
+  $('#pickAny').addEventListener('change', e => { const f = e.target.files, dest = pendingDest; pendingDest = undefined; addFiles(f, { dest }).finally(() => { e.target.value = ''; }); });
   $('#pickImage').addEventListener('change', e => { const f = e.target.files; addFiles(f, { insertFigure: true }).finally(() => { e.target.value = ''; }); });
   $('#pickZip').addEventListener('change', e => { const f = e.target.files[0]; if (f) importZip(f).finally(() => { e.target.value = ''; }); });
   $('#btnNewFile').addEventListener('click', () => {
@@ -1777,11 +2370,12 @@ function wire() {
     let name = sanitizePath($('#newFileName').value); if (!name) return;
     if (!extOf(name)) name += '.tex';
     if (fileByName(name)) { toast(name + ' already exists.'); return; }
-    ws.files.push({ name, kind: 'text', text: isTexLike(name) ? `% ${name}\n` : '' });
+    ws.files.push({ name, kind: 'text', text: isTexLike(name) ? `% ${name}\n` : '', added: Date.now() }); ensureFolder(dirOf(name));
     touch(); $('#newFileForm').hidden = true; renderFiles(); Editor.open(name); closeSheets(); setView('code');
     if (isTexLike(name) && name !== ws.main) toast(`Add \\input{${name.replace(/\.tex$/, '')}} to ${ws.main} to include it.`);
   });
 
+  /* pdf */
   $('#zoomIn').addEventListener('click', () => Viewer.setZoom(Viewer.zoom * 1.2));
   $('#zoomOut').addEventListener('click', () => Viewer.setZoom(Viewer.zoom / 1.2));
   $('#zoomLbl').addEventListener('click', () => Viewer.setZoom(1));
@@ -1793,20 +2387,22 @@ function wire() {
     catch (e) { if (e && e.name !== 'AbortError') saveBlob(new Blob([Viewer.buf], { type: 'application/pdf' }), pdfName()); }
   });
 
+  /* history */
   $('#bRestore').addEventListener('click', () => viewing && restoreEntry(viewing));
   $('#bDelete').addEventListener('click', async () => {
     const e = viewing; if (!e) return;
-    if (!await ask('Delete this version?', 'Its PDF and log are removed from History.', 'Delete')) return;
+    if (!await ask('Delete this version?', 'Its PDF and log are removed from History.', 'Delete', true)) return;
     await History.remove(e.id); toast('Version deleted'); backToLatest();
   });
   $('#bClose').addEventListener('click', backToLatest);
-
   $('#histSearch').addEventListener('input', renderHistory);
   $('#histClear').addEventListener('click', async () => {
-    if (!await ask('Clear all history?', `This removes ${plural(History.list.length, 'saved version')} and their PDFs from this device. Your current files stay.`, 'Clear all')) return;
-    await History.clear(); hideBanner(); renderHistory(); toast('History cleared');
+    const n = History.of(ws.id).length;
+    if (!await ask('Clear this project’s history?', `This removes ${plural(n, 'saved version')} and their PDFs. Your current files stay.`, 'Clear history', true)) return;
+    await History.clearProject(ws.id); hideBanner(); renderHistory(); toast('History cleared');
   });
 
+  /* problems */
   $('#issuesClose').addEventListener('click', () => Issues.hide());
   $('#logToggle').addEventListener('click', () => { const b = $('#logBox'); b.hidden = !b.hidden; $('#logToggle').textContent = b.hidden ? 'Full log' : 'Hide log'; });
   $('#logCopy').addEventListener('click', async () => {
@@ -1814,34 +2410,41 @@ function wire() {
     catch { $('#logBox').hidden = false; const r = document.createRange(); r.selectNodeContents($('#logPre')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Log selected. Copy it from the menu.'); }
   });
 
+  /* settings */
   $('#setServer').addEventListener('change', e => { settings.server = e.target.value.trim() || DEFAULT_SERVER; saveSettings(); toast('Compile server saved'); });
   $('#setServerReset').addEventListener('click', () => { settings.server = DEFAULT_SERVER; $('#setServer').value = DEFAULT_SERVER; saveSettings(); toast('Using the default server'); });
   $('#setBib').addEventListener('change', e => { settings.bib = e.target.checked; saveSettings(); refreshStatus(); });
   $('#setStop').addEventListener('change', e => { settings.stopOnError = e.target.checked; saveSettings(); refreshStatus(); });
-  for (const b of $$('#themeSeg button')) b.addEventListener('click', () => { settings.theme = b.dataset.themeSet; saveSettings(); applyTheme(); renderMore(); });
+  for (const b of $$('#themeSeg button')) b.addEventListener('click', () => { settings.theme = b.dataset.themeSet; saveSettings(); applyTheme(); renderSettings(); });
   $('#btnPersist').addEventListener('click', async () => {
-    try { const ok = await navigator.storage.persist(); toast(ok ? 'History is protected' : 'This browser decides on its own. Adding Galley to your home screen protects it.'); } catch {}
-    renderMore();
+    try { const ok = await navigator.storage.persist(); toast(ok ? 'Your projects are protected' : 'This browser decides on its own. Adding Galley to your home screen protects it.'); } catch {}
+    renderSettings();
   });
 
-  $('#askYes').addEventListener('click', () => answer(true));
-  $('#askNo').addEventListener('click', () => answer(false));
-  $('#ask').addEventListener('click', e => { if (e.target === $('#ask')) answer(false); });
+  /* dialog */
+  $('#askForm').addEventListener('submit', e => { e.preventDefault(); finishAsk(askMode === 'input' ? $('#askInput').value : true); });
+  $('#askNo').addEventListener('click', () => finishAsk(askMode === 'confirm' ? false : null));
+  $('#ask').addEventListener('click', e => { if (e.target === $('#ask')) finishAsk(askMode === 'confirm' ? false : null); });
 
   document.addEventListener('keydown', e => {
     const mod = e.metaKey || e.ctrlKey;
-    if (mod && (e.key === 'Enter' || (e.key || '').toLowerCase() === 's')) { e.preventDefault(); compile(); return; }
-    if (e.key === 'Escape') { if (!$('#ask').hidden) answer(false); else closeSheets(); }
+    if (mod && (e.key === 'Enter' || (e.key || '').toLowerCase() === 's')) { e.preventDefault(); if (ws) compile(); return; }
+    if (e.key === 'Escape') { if (!$('#ask').hidden) finishAsk(askMode === 'confirm' ? false : null); else if (!$('#menu').hidden) closeMenu(); else closeSheets(); }
   });
   Editor.ta.addEventListener('paste', onPasteFiles);
 
-  /* drag and drop */
+  /* drag and drop from the computer */
   let dragDepth = 0;
   const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-  document.addEventListener('dragenter', e => { if (!hasFiles(e)) return; dragDepth++; $('#drop').hidden = false; });
+  document.addEventListener('dragenter', e => { if (!hasFiles(e)) return; dragDepth++; $('#drop').hidden = !$('#sheetFiles').hidden; });
   document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; $('#drop').hidden = true; } });
   document.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
-  document.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; addFiles(e.dataTransfer.files); });
+  document.addEventListener('drop', e => {
+    dragDepth = 0; $('#drop').hidden = true;
+    if (!hasFiles(e) || e.galleyDone) return; e.preventDefault();
+    if (ws) addFiles(e.dataTransfer.files);
+    else if (e.dataTransfer.files.length === 1 && extOf(e.dataTransfer.files[0].name) === 'zip') importZip(e.dataTransfer.files[0]);
+  });
 
   /* splitter */
   const split = $('#split'), panes = $('#panes'); let drag = false;
@@ -1857,7 +2460,7 @@ function wire() {
     const cur = parseFloat(panes.style.getPropertyValue('--split')) || 50; setSplit(cur + (e.key === 'ArrowLeft' ? -3 : 3)); writeLS('galley.split', panes.style.getPropertyValue('--split'));
   });
 
-  /* phone keyboards: keep the app inside the visible area */
+  /* phone keyboards: keep the editor inside the visible area */
   if (window.visualViewport) {
     const vv = window.visualViewport, app = $('#app');
     const fit = () => {
@@ -1869,10 +2472,42 @@ function wire() {
     vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit();
   }
   matchMedia('(max-width: 860px)').addEventListener('change', () => { Viewer.layout(); if (Editor.cm) Editor.cm.refresh(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveWorkspace(); });
+  window.addEventListener('pagehide', () => saveWorkspace());
+}
 
-  const flushNow = () => { saveWorkspace(); };
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushNow(); });
-  window.addEventListener('pagehide', flushNow);
+/* ---------- moving data from the single-document version ---------- */
+async function migrate() {
+  let legacy = null;
+  try { legacy = await Store.get('kv', 'workspace'); } catch {}
+  const orphans = History.list.filter(e => !e.projectId);
+  if (!legacy && !orphans.length) return;
+  const now = Date.now();
+  let current = null;
+  if (legacy && Array.isArray(legacy.files) && legacy.files.length) {
+    let lastSig = null; try { lastSig = await Store.get('kv', 'lastSig'); } catch {}
+    const folders = [...new Set(legacy.files.map(f => dirOf(f.name)).filter(Boolean))];
+    current = await Projects.add({ ...legacy, id: newPid(), folders, created: now, updated: now, lastSig: lastSig || null });
+  }
+  /* earlier documents replaced with "New document" live on in History: give each its own project */
+  const groups = new Map();
+  for (const e of orphans) { const k = e.title || 'Untitled'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(e); }
+  for (const [title, entries] of groups) {
+    let p = current && (current.title || 'Untitled') === title ? current : null;
+    if (!p) {
+      const src = entries[0], files = [];
+      for (const f of src.files || []) {
+        if (f.kind === 'text') { const b = await Store.get('blobs', f.ref); files.push({ name: f.name, kind: 'text', text: b && typeof b.text === 'string' ? b.text : '', added: now }); }
+        else files.push({ name: f.name, kind: 'bin', hash: f.ref, type: f.type, size: f.size, added: now });
+      }
+      if (!files.length) continue;
+      p = await Projects.add({ id: newPid(), title, main: src.main || 'main.tex', compiler: src.compiler, active: src.main, files, folders: [...new Set(files.map(f => dirOf(f.name)).filter(Boolean))], created: entries[entries.length - 1].at, updated: src.at });
+    }
+    for (const e of entries) { e.projectId = p.id; await Store.put('history', e); }
+    const last = entries.find(e => !e.draft);
+    if (last) { p.status = last.ok ? { ok: true, at: last.at, pages: last.pages } : { ok: false, at: last.at, errors: last.errors }; if (last.ok && p !== current) p.lastSig = last.sig; await Projects.save(p); }
+  }
+  try { await Store.del('kv', 'workspace'); await Store.del('kv', 'lastSig'); } catch {}
 }
 
 /* ---------- start ---------- */
@@ -1881,24 +2516,15 @@ async function boot() {
   applyTheme();
   Editor.init(); wire();
   await Store.ready();
-  let saved = null;
-  try { saved = await Store.get('kv', 'workspace'); lastCompiledSig = (await Store.get('kv', 'lastSig')) || null; } catch {}
-  if (saved && Array.isArray(saved.files) && saved.files.length) setWorkspace(saved, { keepSig: true });
-  else setWorkspace(await buildTemplate('sample'));
-  setStatus('Not compiled yet');
-  cmP.then(() => Editor.upgrade()).catch(() => { /* the plain editor keeps working */ });
+  await Projects.load();
   await History.load();
-  const latest = History.list.find(e => e.hasPdf);
-  if (latest && !Viewer.buf) {
-    const pdf = await History.pdf(latest.id);
-    if (pdf) {
-      const pages = await Viewer.show(pdf);
-      $('#pdfInfo').textContent = pages ? `${plural(pages, 'page')} · ${fmtSize(pdf.byteLength)}` : '';
-      setStatus(`Last compiled ${whenLabel(latest.at)}`, latest.sig === lastCompiledSig ? 'ok' : '');
-    }
-  }
+  await migrate();
+  if (!Projects.list.length) await createProject('sample');
+  cmP.then(() => Editor.upgrade()).catch(() => { /* the plain editor keeps working */ });
+  let open = null; try { open = sessionStorage.getItem('galley.open'); } catch {}
+  if (open && Projects.get(open)) await openProject(open); else await showHome();
   idle(() => { loadPdfJs().catch(() => {}); });
-  if (!Store.persistent) toast('Private browsing: files won’t be saved after you close this tab.');
+  if (!Store.persistent) toast('Private browsing: your work won’t be saved after you close this tab.');
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.)/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 boot();
