@@ -1,6 +1,6 @@
 {
-  "name": "Latex-Galley",
-  "short_name": "Latex-Galley",
+  "name": "Galley",
+  "short_name": "Galley",
   "description": "LaTeX editor and compiler with history. No account needed.",
   "start_url": "./",
   "scope": "./",
