@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Latex-Gallery</title>
+<title>Galley</title>
 <meta name="description" content="A fast LaTeX editor and compiler for phone, tablet and desktop. No account. Every compile is kept in History on your device.">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14171d" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Latex-Gallery">
+<meta name="apple-mobile-web-app-title" content="Galley">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -299,9 +299,9 @@ body.kb .issues{max-height:28vh}
 <body>
 <div class="app" id="app" data-view="code">
   <header class="bar">
-    <div class="brand" title="Latex-Gallery">
+    <div class="brand" title="Galley">
       <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="pg-r" x="4.5" y="2.5" width="15" height="19" rx="2"/><path class="pg-l" d="M8 8h8M8 11.5h8M8 15h5"/></svg>
-      <span class="word">Latex-Gallery</span>
+      <span class="word">Galley</span>
     </div>
     <input id="docTitle" class="doc-title" type="text" aria-label="Document name" autocomplete="off" spellcheck="false" enterkeyhint="done">
     <span class="status" data-status aria-live="polite"></span>
@@ -440,7 +440,7 @@ body.kb .issues{max-height:28vh}
     <h3 class="sec">This device</h3>
     <p class="note" id="storageInfo">History is saved on this device only.</p>
     <button class="btn" id="btnPersist" type="button">Protect history from automatic clean-up</button>
-    <p class="note">On iPhone or iPad: Share → Add to Home Screen. Latex-Gallery then opens like an app, loads instantly and Safari won’t clear its history.</p>
+    <p class="note">On iPhone or iPad: Share → Add to Home Screen. Galley then opens like an app, loads instantly and Safari won’t clear its history.</p>
     <p class="note">Keyboard: Ctrl/⌘ + Enter or Ctrl/⌘ + S compiles. Paste a screenshot into the editor to add it as a figure.</p>
   </div>
 </aside>
@@ -457,7 +457,7 @@ body.kb .issues{max-height:28vh}
 <input type="file" id="pickAny" multiple hidden>
 <input type="file" id="pickImage" accept="image/*,.pdf,.eps" multiple hidden>
 <input type="file" id="pickZip" accept=".zip,application/zip" hidden>
-<noscript><p style="padding:20px">Latex-Gallery needs JavaScript to run.</p></noscript>
+<noscript><p style="padding:20px">Galley needs JavaScript to run.</p></noscript>
 
 <script>
 (() => {
@@ -1820,7 +1820,7 @@ function wire() {
   $('#setStop').addEventListener('change', e => { settings.stopOnError = e.target.checked; saveSettings(); refreshStatus(); });
   for (const b of $$('#themeSeg button')) b.addEventListener('click', () => { settings.theme = b.dataset.themeSet; saveSettings(); applyTheme(); renderMore(); });
   $('#btnPersist').addEventListener('click', async () => {
-    try { const ok = await navigator.storage.persist(); toast(ok ? 'History is protected' : 'This browser decides on its own. Adding Latex-Gallery to your home screen protects it.'); } catch {}
+    try { const ok = await navigator.storage.persist(); toast(ok ? 'History is protected' : 'This browser decides on its own. Adding Galley to your home screen protects it.'); } catch {}
     renderMore();
   });
 
