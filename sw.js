@@ -1,12 +1,13 @@
-// Galley offline cache: the app shell and its CDN libraries load from the device after the first visit.
-const SHELL = 'galley-shell-v1';
+// Galley offline cache. The page itself is fetched fresh when the network answers quickly,
+// so updates show up straight away; otherwise it opens from the device. Libraries are cached for good.
+const SHELL = 'galley-shell-v2';
 const LIBS = 'galley-libs-v1';
 const SHELL_FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(SHELL);
-    await Promise.all(SHELL_FILES.map(f => cache.add(f).catch(() => {})));
+    await Promise.all(SHELL_FILES.map(f => cache.add(new Request(f, { cache: 'reload' })).catch(() => {})));
     await self.skipWaiting();
   })());
 });
@@ -35,15 +36,22 @@ self.addEventListener('fetch', event => {
     })());
     return;
   }
+  if (url.origin !== self.location.origin) return;
 
-  // App shell: answer instantly from cache, refresh it in the background.
-  if (url.origin === self.location.origin) {
-    event.respondWith((async () => {
-      const cache = await caches.open(SHELL);
-      const hit = await cache.match(req, { ignoreSearch: true });
-      const fresh = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
-      if (hit) { event.waitUntil(fresh); return hit; }
-      return fresh;
-    })());
-  }
+  event.respondWith((async () => {
+    const cache = await caches.open(SHELL);
+    const hit = await cache.match(req, { ignoreSearch: true });
+    const fresh = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; });
+    fresh.catch(() => {});
+    // The page: prefer the network for 1.5 s so a new version shows at once; fall back to the copy on the device.
+    if (req.mode === 'navigate' && hit) {
+      const timeout = new Promise(r => setTimeout(() => r(null), 1500));
+      const first = await Promise.race([fresh.catch(() => null), timeout]);
+      if (first) return first;
+      event.waitUntil(fresh.catch(() => {}));
+      return hit;
+    }
+    if (hit) { event.waitUntil(fresh.catch(() => {})); return hit; }
+    return fresh;
+  })());
 });
