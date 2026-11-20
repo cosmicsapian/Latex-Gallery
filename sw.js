@@ -1,6 +1,6 @@
 // Galley offline cache. The page itself is fetched fresh when the network answers quickly,
 // so updates show up straight away; otherwise it opens from the device. Libraries are cached for good.
-const SHELL = 'galley-shell-v2';
+const SHELL = 'galley-shell-v3';
 const LIBS = 'galley-libs-v1';
 const SHELL_FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
