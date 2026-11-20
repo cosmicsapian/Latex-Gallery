@@ -4,7 +4,7 @@
 
 Keep as many projects as you like, write LaTeX, add photos and other files, press **Compile**, and read the PDF right beside your source. Every compile is saved to the project's History on your device, so you can go back to any earlier version.
 
-**Try it:** https://YOUR-USERNAME.github.io/galley/
+**Try it:** https://cosmicsapian.github.io/galley/
 
 <!-- Add a screenshot here once the site is live, e.g. ![Galley on a laptop and a phone](docs/screenshot.png) -->
 
