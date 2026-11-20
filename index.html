@@ -135,7 +135,7 @@ body[data-screen="home"] .app,body[data-screen="editor"] .home,body:not([data-sc
 .home-empty h2{margin:0;font:500 24px var(--serif);color:var(--fg)}
 
 /* ---------- Editor ---------- */
-.app{position:fixed;top:0;left:0;right:0;height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;
+.app{position:fixed;top:0;left:0;right:0;height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;
   padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body.kb .app{padding-bottom:0}
 .bar{grid-row:1;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:var(--surface);border-bottom:1px solid var(--line);min-width:0}
@@ -166,6 +166,7 @@ body.kb .app{padding-bottom:0}
 @keyframes pulse{50%{opacity:.3}}
 
 .subbar{grid-row:2;display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.subbar .status{flex:1 1 auto}
 .panes{grid-row:3;display:grid;grid-template-columns:minmax(0,var(--split,50%)) 7px minmax(0,1fr);min-height:0}
 .pane{display:grid;min-height:0;min-width:0}
 .src-pane{grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface)}
@@ -268,6 +269,8 @@ body.kb .issues{max-height:28vh}
 .issue code{display:block;font:12.5px/1.5 var(--mono);color:var(--muted);margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:400}
 .issue .hint{display:block;color:var(--muted);font-weight:400;margin-top:2px}
 .issue-note{margin:6px 8px;color:var(--muted)}
+.issue-note.lead{color:var(--fg);font-weight:500}
+.issue-acts{display:flex;gap:8px;flex-wrap:wrap;margin:2px 8px 10px}
 .logbox{margin:6px 8px 8px}
 .logbox pre{margin:0;max-height:260px;overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:10px;font:12px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
 
@@ -288,7 +291,13 @@ body.kb .issues{max-height:28vh}
 .tpl b{font-weight:650}
 .tpl span{color:var(--muted);font-size:12.5px;line-height:1.35}
 .field{display:flex;flex-direction:column;gap:6px}
-.field>span:first-child{font-weight:600}
+.field>label,.field>span:first-child{font-weight:600}
+.field .opt{font-weight:400;color:var(--muted)}
+.probe{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.probe::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+.probe[data-tone="ok"]{color:var(--ok)}.probe[data-tone="ok"]::before{background:var(--ok)}
+.probe[data-tone="bad"]{color:var(--bad)}.probe[data-tone="bad"]::before{background:var(--bad)}
+.probe[data-tone="busy"]::before{background:var(--accent);animation:pulse 1s ease-in-out infinite}
 .field small{color:var(--muted);font-size:12.5px}
 .sw{display:flex;align-items:flex-start;gap:10px;padding:4px 0;cursor:pointer}
 .sw input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);flex:none}
@@ -555,10 +564,16 @@ body.kb .issues{max-height:28vh}
   <header class="sh-head"><h2 id="hSettings">Settings</h2><button class="btn icon ghost" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
   <div class="sh-body">
     <h3 class="sec">Compiling</h3>
-    <label class="field" for="setServer"><span>Compile server</span>
-      <span class="row"><input class="input" id="setServer" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" id="setServerReset" type="button">Reset</button></span>
-      <small>Your files are sent here only when you press Compile. The default is a free public TeX Live service with no account. To keep everything on your own machine, run your own copy and paste its address here.</small>
-    </label>
+    <div class="field"><label for="setServer">Compile server</label>
+      <span class="row"><input class="input" id="setServer" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" id="setServerTest" type="button">Test</button><button class="btn" id="setServerReset" type="button">Reset</button></span>
+      <small class="probe" id="serverProbe" hidden aria-live="polite"></small>
+      <small>Your files are sent here only when you press Compile. The default, latex.ytotech.com, is a free public TeX Live service with no account, and it’s sometimes down for a while. To compile on your own computer, run <b>galley-server.py</b> from Galley’s server folder and paste the address it prints.</small>
+    </div>
+    <div class="field"><label for="setBackup">Backup server <span class="opt">(optional)</span></label>
+      <span class="row"><input class="input" id="setBackup" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. http://localhost:8080"><button class="btn" id="setBackupTest" type="button">Test</button></span>
+      <small class="probe" id="backupProbe" hidden aria-live="polite"></small>
+      <small>Galley uses this automatically when the compile server doesn’t answer.</small>
+    </div>
     <label class="sw"><input type="checkbox" id="setBib"><span>Run BibTeX / Biber automatically</span></label>
     <label class="sw"><input type="checkbox" id="setStop"><span>Strict mode: no PDF if LaTeX reports any error</span></label>
 
@@ -714,12 +729,35 @@ function ago(ts) {
 }
 
 /* ---------- settings ---------- */
-const settings = Object.assign({ server: DEFAULT_SERVER, stopOnError: false, bib: true, theme: 'auto' }, readLS('galley.settings') || {});
+const settings = Object.assign({ server: DEFAULT_SERVER, backup: '', stopOnError: false, bib: true, theme: 'auto' }, readLS('galley.settings') || {});
 const saveSettings = () => writeLS('galley.settings', settings);
-function serverUrl() {
-  let s = (settings.server || DEFAULT_SERVER).trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
-  return s.replace(/\/builds\/sync$/, '');
+const isLocalHost = h => /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])(:\d+)?$/i.test(h);
+function normServer(v) {
+  let s = String(v || '').trim().replace(/\/+$/, '').replace(/\/builds\/sync$/, '');
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = (isLocalHost(s.split('/')[0]) ? 'http://' : 'https://') + s;
+  return s;
+}
+function serverUrl() { return normServer(settings.server) || DEFAULT_SERVER; }
+function backupUrl() { const b = normServer(settings.backup); return b && b !== serverUrl() ? b : ''; }
+const hostOf = u => String(u).replace(/^https?:\/\//i, '').split('/')[0];
+const isDefaultServer = u => hostOf(u) === hostOf(DEFAULT_SERVER);
+/* An https page can't call plain-http addresses other than this computer. */
+const blockedMixed = u => location.protocol === 'https:' && /^http:\/\//i.test(u) && !isLocalHost(hostOf(u));
+function waitFor(ms, signal) {
+  return new Promise((res, rej) => {
+    const t = setTimeout(res, ms);
+    if (signal) signal.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('Aborted', 'AbortError')); }, { once: true });
+  });
+}
+async function probeServer(base, ms = 7000) {
+  if (blockedMixed(base)) return { ok: false, mixed: true };
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(base + '/', { signal: ctrl.signal, cache: 'no-store' });
+    let info = null; try { info = await res.json(); } catch {}
+    return { ok: res.ok, http: res.status, info };
+  } catch { return { ok: false }; } finally { clearTimeout(t); }
 }
 
 /* ---------- storage (IndexedDB, memory fallback) ---------- */
@@ -1925,7 +1963,7 @@ let baseStatus = { text: '', tone: '' };
 function setStatus(text, tone = '') { baseStatus = { text, tone }; refreshStatus(); }
 function refreshStatus() {
   let { text, tone } = baseStatus;
-  if (compiling) { text = 'Compiling…'; tone = 'busy'; }
+  if (compiling) { text = compiling.note || 'Compiling…'; tone = 'busy'; }
   else if (ws && ws.lastSig && tone === 'ok' && sigOf() !== ws.lastSig) { text = 'Edited since last compile'; tone = 'edit'; }
   for (const s of $$('[data-status]')) { s.textContent = text; s.dataset.tone = tone; }
 }
@@ -1963,10 +2001,28 @@ async function compile() {
       compiler: project.compiler, resources,
       options: { compiler: { bibliography: !!settings.bib, halt_on_error: !!settings.stopOnError, force: !settings.stopOnError }, response: { log_files_on_failure: true } },
     });
-    const res = await fetch(serverUrl() + '/builds/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ctrl.signal });
-    const ct = res.headers.get('content-type') || '';
-    if (res.ok && /pdf/i.test(ct)) r = { ok: true, pdf: await res.arrayBuffer() };
-    else { const raw = await res.text(); let data = null; try { data = JSON.parse(raw); } catch {} r = { ok: false, http: res.status, data, raw }; }
+    const send = async base => {
+      if (blockedMixed(base)) throw new TypeError('mixed content');
+      const res = await fetch(base + '/builds/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ctrl.signal });
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && /pdf/i.test(ct)) return { ok: true, pdf: await res.arrayBuffer(), via: base };
+      const raw = await res.text(); let data = null; try { data = JSON.parse(raw); } catch {}
+      return { ok: false, http: res.status, data, raw, via: base };
+    };
+    /* The main server gets a second try after 2 s (it may be restarting), then the backup server, if any. */
+    const servers = [serverUrl()]; if (backupUrl()) servers.push(backupUrl());
+    let busy = null;
+    for (let i = 0; i < servers.length && !r; i++) {
+      for (let attempt = 0; attempt < (i === 0 ? 2 : 1) && !r; attempt++) {
+        if (i > 0) { job.note = 'Trying your backup server…'; refreshStatus(); }
+        else if (attempt) { job.note = 'No answer · trying again…'; refreshStatus(); await waitFor(2000, ctrl.signal); }
+        let res = null;
+        try { res = await send(servers[i]); } catch (e) { if (job.user || job.timeout) throw e; }
+        if (res && !res.ok && [502, 503, 504].includes(res.http)) { busy = res; res = null; }
+        r = res;
+      }
+    }
+    if (!r) r = busy || { ok: false, net: true, tried: servers, size: body.length };
   } catch (e) {
     r = { ok: false, net: true, user: job.user, timeout: job.timeout, err: e };
   } finally { clearInterval(tick); clearTimeout(to); }
@@ -1980,9 +2036,13 @@ async function handleResult(r, { sig, snap, ms, project }) {
   if (r.net) {
     if (!here) return;
     if (r.user) { setStatus('Compile cancelled'); return; }
-    if (r.timeout) { Issues.show([], '', 'No answer from the compile server after 3 minutes. Try again, or check the server address in Settings.'); setStatus('No answer from server', 'bad'); return; }
-    Issues.show([], '', navigator.onLine === false ? 'You’re offline. Connect to the internet and compile again. Your work is saved on this device.' : `Couldn’t reach the compile server (${serverUrl().replace(/^https?:\/\//, '')}). Try again in a moment, or check the address in Settings.`);
-    setStatus('Not compiled', 'bad'); return;
+    const acts = [{ label: 'Try again', primary: true, act: () => compile() }, { label: 'Settings', act: () => openSheet('sheetSettings') }];
+    if (r.timeout) { Issues.show([], '', 'No answer from the compile server after 3 minutes. Your work is saved. Try again, or set a backup server in Settings.', acts); setStatus('No answer from server', 'bad'); return; }
+    if (navigator.onLine === false) { Issues.show([], '', 'You’re offline. Connect to the internet and compile again. Your work is saved on this device.', acts); setStatus('Offline', 'bad'); return; }
+    setStatus('Checking the compile server…');
+    const why = await diagnose(r.tried || [serverUrl()], r.size || 0);
+    if (ws !== project) return;
+    Issues.show([], '', why, acts); setStatus('Server not answering', 'bad'); return;
   }
   const entry = { id: newId(), projectId: project.id, at: Date.now(), title: project.title, compiler: project.compiler, main: project.main, ms, sig, files: snap || [] };
   if (r.ok) {
@@ -1992,7 +2052,7 @@ async function handleResult(r, { sig, snap, ms, project }) {
       hideBanner(); Issues.hide(); setView('pdf');
       pages = await Viewer.show(r.pdf, { keepPlace: true });
       $('#pdfInfo').textContent = pages ? `${plural(pages, 'page')} · ${fmtSize(r.pdf.byteLength)}` : fmtSize(r.pdf.byteLength);
-      setStatus(`Compiled in ${secs(ms)}${pages ? ' · ' + plural(pages, 'page') : ''}`, 'ok');
+      setStatus(`Compiled in ${secs(ms)}${pages ? ' · ' + plural(pages, 'page') : ''}${r.via && r.via !== serverUrl() ? ' · on your backup server' : ''}`, 'ok');
       Viewer.thumb().then(t => { if (t) { project.thumb = t; Projects.save(project); } });
     }
     project.status = { ok: true, at: entry.at, pages, ms };
@@ -2016,10 +2076,27 @@ async function handleResult(r, { sig, snap, ms, project }) {
   }
   if (here) setView('code');
 }
+async function diagnose(tried, size) {
+  const main = tried[0], name = hostOf(main);
+  const probes = await Promise.all(tried.map(u => probeServer(u)));
+  const big = size > 15e6 ? ` Your project is ${fmtSize(size)}, mostly images; shrinking them makes compiles faster and more reliable.` : '';
+  if (probes[0].mixed) return `This page is served over https, so the browser won’t send files to ${name}, a plain http address. Use the https address that galley-server.py prints with --tunnel, or http://localhost when the server runs on this computer.`;
+  if (probes.some(p => p.ok)) {
+    const up = tried.filter((u, i) => probes[i].ok).map(hostOf).join(' and ');
+    return `${up} is up, but it didn’t send back this compile. It may be busy or restarting, or the upload was too large.${big || ' Try again in a minute.'}`;
+  }
+  const backupNote = tried.length > 1 ? ` Your backup server (${hostOf(tried[1])}) isn’t answering either.` : ' Set a backup server in Settings so Galley can switch automatically next time.';
+  if (isDefaultServer(main)) return `The free public compile server (${name}) isn’t answering. It’s a free service in open beta and is sometimes down for a while during updates. Your work is saved.${backupNote}${big}`;
+  if (isLocalHost(name)) return `Your compile server on this computer (${name}) isn’t answering. Check that galley-server.py is still running in a terminal.${tried.length > 1 ? backupNote : ''}`;
+  if (/trycloudflare\.com$/i.test(name)) return `Your tunnel address (${name}) isn’t answering. Tunnel addresses change every time galley-server.py starts: copy the new one from its terminal into Settings.${tried.length > 1 ? backupNote : ''}`;
+  return `The compile server (${name}) isn’t answering. Check the address in Settings, or try again later.${backupNote}${big}`;
+}
 function describeApiError(r) {
   const d = r.data || {}, raw = String(r.raw || '');
   if (r.http === 413) return 'These files are too large for the compile server. Remove or shrink big images.';
+  if (r.http === 503 || r.http === 502 || r.http === 504) return `The compile server (${hostOf(r.via || serverUrl())}) is busy or restarting (HTTP ${r.http}). Try again in a minute.`;
   if (r.http >= 500) return `The compile server had a problem (HTTP ${r.http}). Try again in a moment.`;
+  if (r.http === 404 && /trycloudflare|localhost|127\./.test(r.via || '')) return 'Your compile server didn’t accept this address. Copy the full address that galley-server.py prints, including the part after the last slash.';
   if (/MUST_SPECIFY_MAIN_DOCUMENT|MORE_THAN_ONE_MAIN/.test(raw)) return 'Choose exactly one main .tex file in Files.';
   if (/MISSING_PATH|INVALID_PAYLOAD/.test(raw)) return 'The compile server rejected the request. A file name may contain characters it can’t use.';
   if (d.error) return `The compile server returned “${d.error}”.`;
@@ -2070,11 +2147,12 @@ function parseLog(log, project = ws) {
 }
 const Issues = {
   el: $('#issues'), log: '',
-  show(problems, log, headline) {
+  show(problems, log, headline, actions) {
     this.log = log || '';
     const list = $('#issueList'); list.replaceChildren();
     $('#issueTitle').textContent = problems.length ? `${plural(problems.length, 'problem')} in your document` : 'Compile failed';
-    if (headline) list.append(h('p', { class: 'issue-note' }, headline));
+    if (headline) list.append(h('p', { class: 'issue-note' + (actions ? ' lead' : '') }, headline));
+    if (actions) list.append(h('div', { class: 'issue-acts' }, actions.map(a => h('button', { class: 'btn sm' + (a.primary ? ' primary' : ''), type: 'button', onclick: a.act }, a.label))));
     for (const p of problems) {
       list.append(h('button', { class: 'issue', type: 'button', onclick: () => jumpTo(p) },
         h('span', { class: 'loc' }, p.line ? `${p.file}:${p.line}` : 'log'),
@@ -2249,8 +2327,31 @@ function closeSheets(silent) {
   fileSel = null;
   if (was && !silent && lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll: true }); } catch {}
 }
+async function testServer(base, out) {
+  out.hidden = false; out.dataset.tone = 'busy'; out.textContent = 'Compiling a test page…';
+  const say = (tone, text) => { out.dataset.tone = tone; out.textContent = text; };
+  if (blockedMixed(base)) return say('bad', 'This page is https, so the browser blocks plain http addresses other than localhost. Use the https tunnel address.');
+  const t0 = performance.now(), ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const res = await fetch(base + '/builds/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ compiler: 'pdflatex', resources: [{ main: true, path: 'main.tex', content: '\\documentclass{article}\\begin{document}Galley test\\end{document}' }] }) });
+    const ct = res.headers.get('content-type') || '';
+    if (res.ok && /pdf/i.test(ct)) {
+      const info = (await probeServer(base, 4000)).info || {};
+      say('ok', `Working · compiled a test page in ${secs(performance.now() - t0)}${info.texlive_version ? ` · TeX Live ${info.texlive_version}` : ''}`);
+    } else if (res.status === 404 && !isDefaultServer(base)) say('bad', 'The server answered but didn’t accept this address. Paste the full address galley-server.py prints.');
+    else say('bad', `The server answered but couldn’t compile (HTTP ${res.status}).`);
+  } catch {
+    const h = hostOf(base);
+    say('bad', isLocalHost(h) ? 'Not answering. Start galley-server.py on this computer, then test again.'
+      : /trycloudflare\.com$/i.test(h) ? 'Not answering. The tunnel may have stopped, or its address changed when the server restarted.'
+      : isDefaultServer(base) ? 'Not answering right now. The free public server is sometimes down for a while; try again later.'
+      : 'Not answering. Check the address, or try again later.');
+  } finally { clearTimeout(t); }
+}
 function renderSettings() {
   $('#setServer').value = settings.server || DEFAULT_SERVER;
+  $('#setBackup').value = settings.backup || '';
   $('#setBib').checked = !!settings.bib; $('#setStop').checked = !!settings.stopOnError;
   for (const b of $$('#themeSeg button')) b.setAttribute('aria-pressed', String(b.dataset.themeSet === (settings.theme || 'auto')));
   const info = $('#storageInfo'), pb = $('#btnPersist');
@@ -2411,8 +2512,11 @@ function wire() {
   });
 
   /* settings */
-  $('#setServer').addEventListener('change', e => { settings.server = e.target.value.trim() || DEFAULT_SERVER; saveSettings(); toast('Compile server saved'); });
-  $('#setServerReset').addEventListener('click', () => { settings.server = DEFAULT_SERVER; $('#setServer').value = DEFAULT_SERVER; saveSettings(); toast('Using the default server'); });
+  $('#setServer').addEventListener('change', e => { settings.server = normServer(e.target.value) || DEFAULT_SERVER; e.target.value = settings.server; $('#serverProbe').hidden = true; saveSettings(); toast('Compile server saved'); });
+  $('#setServerReset').addEventListener('click', () => { settings.server = DEFAULT_SERVER; $('#setServer').value = DEFAULT_SERVER; $('#serverProbe').hidden = true; saveSettings(); toast('Using the default server'); });
+  $('#setBackup').addEventListener('change', e => { settings.backup = normServer(e.target.value); e.target.value = settings.backup; $('#backupProbe').hidden = true; saveSettings(); toast(settings.backup ? 'Backup server saved' : 'Backup server removed'); });
+  $('#setServerTest').addEventListener('click', () => testServer(normServer($('#setServer').value) || DEFAULT_SERVER, $('#serverProbe')));
+  $('#setBackupTest').addEventListener('click', () => { const v = normServer($('#setBackup').value); if (v) testServer(v, $('#backupProbe')); else { const o = $('#backupProbe'); o.hidden = false; o.dataset.tone = ''; o.textContent = 'Enter an address first.'; } });
   $('#setBib').addEventListener('change', e => { settings.bib = e.target.checked; saveSettings(); refreshStatus(); });
   $('#setStop').addEventListener('change', e => { settings.stopOnError = e.target.checked; saveSettings(); refreshStatus(); });
   for (const b of $$('#themeSeg button')) b.addEventListener('click', () => { settings.theme = b.dataset.themeSet; saveSettings(); applyTheme(); renderSettings(); });
